@@ -23,26 +23,35 @@
     animation:splashIn 0.75s cubic-bezier(.22,.68,0,1.2) 0.1s forwards;
   }
   #splash-sub {
-    margin-top:20px;
+    position:absolute; bottom:14vh;
     font-family:'DM Sans',sans-serif;
-    font-size:clamp(0.68rem,2.2vw,0.8rem);
+    font-size:clamp(0.82rem,2.6vw,1rem);
     font-weight:300; letter-spacing:0.22em; color:#a09488;
-    opacity:0; animation:splashFade 0.6s ease 0.55s forwards;
+    opacity:0; animation:splashFade 0.75s ease 0.1s forwards;
   }
   @keyframes splashIn { to { opacity:1; transform:translateY(0); } }
   @keyframes splashFade { to { opacity:0.6; } }
+  #splash-tagline {
+    margin-top:14px;
+    font-family:'DM Sans',sans-serif;
+    font-size:clamp(0.82rem,2.6vw,1rem);
+    font-weight:400; letter-spacing:0.52em; color:#3a3228;
+    opacity:0; animation:splashIn 0.75s cubic-bezier(.22,.68,0,1.2) 0.1s forwards;
+  }
 </style>
 <style>
   :root { --bg:#f5f0e8; --text:#3a3228; --text-light:#8a7e72; --card-bg:#ede8de; --accent:#f7cbd1; }
   * { margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-user-select:none; }
-  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:32px 16px; }
-  .brand { text-align:center; margin-bottom:28px; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:20px 16px; }
+  .brand { text-align:center; margin-bottom:18px; }
   .brand-zh { font-family:'DM Serif Display',serif; font-size:2.6rem; letter-spacing:0.02em; line-height:1; }
   .brand-en { font-size:0.7rem; letter-spacing:0.28em; color:var(--text-light); text-transform:uppercase; margin-top:5px; }
   .brand-sub { font-size:0.74rem; color:var(--text-light); margin-top:8px; display:flex; gap:6px; justify-content:center; }
   .dst-btn { font-size:0.72rem; font-family:'DM Sans',sans-serif; color:var(--text-light); background:rgba(0,0,0,0.06); border:none; border-radius:20px; padding:4px 12px; cursor:pointer; transition:all 0.2s; }
   .dst-btn.active { background:var(--accent); color:#fff; }
   .dst-btn:hover:not(.active) { background:rgba(0,0,0,0.12); }
+  #settings-btn { background:var(--accent); color:#fff; padding:4px 10px; }
+  #settings-btn:hover { opacity:0.85; }
   /* DST sliding toggle */
   .dst-toggle { cursor:pointer; }
   .dst-track {
@@ -76,7 +85,6 @@
     .wheel-col { width:100%; max-width:275px; }
     .dial-card { max-width:100% !important; }
   }
-  .wheel-hint { font-size:0.7rem; color:var(--text-light); text-align:center; margin-top:8px; letter-spacing:0.03em; transition:opacity 1.2s ease; }
   .controls { display:flex; flex-direction:column; gap:14px; min-width:230px; max-width:275px; }
   .section-title { font-family:'DM Serif Display',serif; font-size:1rem; margin-bottom:8px; }
   .card { background:var(--card-bg); border-radius:16px; padding:16px; }
@@ -118,7 +126,7 @@
   .legend { display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; }
   .legend-item { display:flex; align-items:center; gap:5px; font-size:0.72rem; color:var(--text-light); }
   .legend-swatch { width:10px; height:10px; border-radius:50%; }
-  .dial-card { margin-top:12px; padding:14px 16px; width:100%; max-width:275px; }
+  .dial-card { margin-top:0; padding:14px 16px; width:100%; max-width:275px; }
   .dial-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
   .dial-label { font-size:0.65rem; font-weight:600; letter-spacing:0.08em; color:var(--text-light); margin-bottom:3px; }
   .dial-time { font-family:'DM Serif Display',serif; font-size:1.5rem; color:var(--text); letter-spacing:-0.5px; }
@@ -136,12 +144,12 @@
 
 <div id="splash">
   <div id="splash-title">We're Around.</div>
+  <div id="splash-tagline">你的时区伴侣</div>
   <div id="splash-sub">我也在地球</div>
 </div>
 
 <div class="brand">
   <div class="brand-zh">Around</div>
-  <div class="brand-en" id="brand-sub-text">你的时区伴侣</div>
   <div class="brand-sub">
     <div class="dst-toggle" id="dst-toggle" onclick="setDST(!isDST)">
       <div class="dst-track" id="dst-track">
@@ -151,6 +159,7 @@
       </div>
     </div>
     <button class="dst-btn" id="lang-btn" onclick="toggleLang()">EN</button>
+    <button class="dst-btn" id="settings-btn" onclick="toggleSettings()" title="设置" aria-label="设置"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
   </div>
 </div>
 
@@ -159,11 +168,10 @@
     <div id="wheel-container">
       <canvas id="wheel"></canvas>
     </div>
-    <p class="wheel-hint" id="wheel-hint">↺ 拖动转盘 · 时间实时联动</p>
     <div class="card dial-card">
       <div class="dial-header">
         <div>
-          <div class="dial-label" id="dial-label">指定当前时间</div>
+          <div class="dial-label" id="dial-label">指定时间</div>
           <div class="dial-time" id="dial-display" onclick="startTimeEdit()" title="点击输入时间" style="cursor:pointer">--:--</div>
           <input type="time" id="dial-time-input" style="display:none;font-family:'DM Serif Display',serif;font-size:1.5rem;color:var(--text);border:none;background:transparent;outline:none;letter-spacing:-0.5px;width:90px" onchange="applyTimeInput(this.value)" onblur="endTimeEdit()"/>
         </div>
@@ -177,18 +185,20 @@
           </button>
         </div>
       </div>
-      <div style="position:relative;margin-top:4px">
-        <input type="range" id="dial-slider" class="dial-slider" min="0" max="1439" step="1" oninput="onDialChange(this.value)">
-        <span class="dial-tick" style="left:0%"        onclick="snapToHour(0)"></span>
-        <span class="dial-tick" style="left:25%;transform:translate(-50%,-50%)"  onclick="snapToHour(6)"></span>
-        <span class="dial-tick" style="left:50%;transform:translate(-50%,-50%)"  onclick="snapToHour(12)"></span>
-        <span class="dial-tick" style="left:75%;transform:translate(-50%,-50%)"  onclick="snapToHour(18)"></span>
-        <span class="dial-tick" style="right:0%;transform:translateY(-50%)"      onclick="snapToHour(24)"></span>
-      </div>
+
     </div>
   </div>
 
-  <div class="controls" id="controls-col">
+</div>
+
+<!-- Settings panel overlay -->
+<div id="settings-panel" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.18);backdrop-filter:blur(2px)" onclick="closeSettingsOutside(event)">
+  <div id="settings-drawer" style="position:absolute;right:0;top:0;bottom:0;width:min(320px,92vw);background:var(--bg);overflow-y:auto;padding:24px 18px;box-shadow:-4px 0 24px rgba(0,0,0,0.10)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <span id="settings-title" style="font-family:'DM Serif Display',serif;font-size:1.1rem">设置</span>
+      <button onclick="toggleSettings()" style="background:none;border:none;cursor:pointer;font-size:1.2rem;color:var(--text-light)">✕</button>
+    </div>
+    <div class="controls" id="controls-col"></div>
   </div>
 </div>
 
@@ -241,7 +251,7 @@ let schedules = [
 ];
 
 const SIZE = 500;
-const CANVAS_H = 420;
+const CANVAS_H = 460;
 const DPR = window.devicePixelRatio || 1;
 const canvas = document.getElementById('wheel');
 canvas.width = SIZE * DPR;
@@ -447,24 +457,6 @@ function draw() {
     ctx.restore();
   }
 
-  // ── Orbiting dot: floats at needleTop radius, tracks real current time ──
-  {
-    const now = new Date();
-    const realMins = (now.getUTCHours()*60 + now.getUTCMinutes() + now.getUTCSeconds()/60
-                      + (timezones[0]?.offset ?? 0)*60 + 2880) % 1440;
-    // Angle offset from dial position: when realMins === currentDialMins, dot sits at top (needle)
-    const diffMins = realMins - currentDialMins;
-    const dotAng = -Math.PI/2 + (diffMins / 1440) * Math.PI * 2;
-    const dotR = outermost + 33;
-    const dx = cx + Math.cos(dotAng) * dotR;
-    const dy = cy + Math.sin(dotAng) * dotR;
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(dx, dy, 2.5, 0, Math.PI*2);
-    ctx.fillStyle = needleColor;
-    ctx.fill();
-    ctx.restore();
-  }
 
   // ── Labels: ring color for time, dark for name, well above needle ──
   const labelY=needleTop-16;
@@ -521,6 +513,70 @@ function draw() {
     drawLabel(cx,          mainTime,  tzDisplayName(timezones[0]), theme.p[0]);
     drawLabel(cx + spread, tzTime(2), tzDisplayName(timezones[2]), theme.p[2]);
   }
+
+  // ── Hint arc: single arc with outward arrowheads at both ends ──
+  if (!_hintFaded || _hintFading) {
+    const alpha = _hintOpacity * 0.28;
+    const hintR = outermost + 18;
+    const arcSpan = Math.PI * 0.28;
+    // Arc centered on right side (3 o'clock)
+    const arcMid = -Math.PI/4; // upper-right (~1:30)
+    const a0 = arcMid - arcSpan/2;
+    const a1 = arcMid + arcSpan/2;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = '#7a7068';
+    ctx.lineWidth = 1.6;
+    ctx.lineCap = 'round';
+
+    // Arc line
+    ctx.beginPath();
+    ctx.arc(cx, cy, hintR, a0, a1);
+    ctx.stroke();
+
+    // Arrowhead at a0 end — tangent points CCW (inward along arc), arrow points CW (outward)
+    { const a = a0;
+      const px = cx + Math.cos(a)*hintR, py = cy + Math.sin(a)*hintR;
+      const t = a - Math.PI/2; // tangent direction CCW → flip to CW = outward
+      const sz = 5;
+      ctx.beginPath();
+      ctx.moveTo(px + Math.cos(t + 2.5)*sz, py + Math.sin(t + 2.5)*sz);
+      ctx.lineTo(px, py);
+      ctx.lineTo(px + Math.cos(t - 2.5)*sz, py + Math.sin(t - 2.5)*sz);
+      ctx.stroke(); }
+
+    // Arrowhead at a1 end — tangent points CW (outward along arc)
+    { const a = a1;
+      const px = cx + Math.cos(a)*hintR, py = cy + Math.sin(a)*hintR;
+      const t = a + Math.PI/2; // tangent direction CW → outward
+      const sz = 5;
+      ctx.beginPath();
+      ctx.moveTo(px + Math.cos(t + 2.5)*sz, py + Math.sin(t + 2.5)*sz);
+      ctx.lineTo(px, py);
+      ctx.lineTo(px + Math.cos(t - 2.5)*sz, py + Math.sin(t - 2.5)*sz);
+      ctx.stroke(); }
+
+    ctx.restore();
+  }
+
+  // ── Orbiting dot: drawn last so always on top ──
+  {
+    const now = new Date();
+    const realMins = (now.getUTCHours()*60 + now.getUTCMinutes() + now.getUTCSeconds()/60
+                      + (timezones[0]?.offset ?? 0)*60 + 2880) % 1440;
+    const diffMins = realMins - currentDialMins;
+    const dotAng = -Math.PI/2 + (diffMins / 1440) * Math.PI * 2;
+    const dotR = outermost + 33;
+    const dx = cx + Math.cos(dotAng) * dotR;
+    const dy = cy + Math.sin(dotAng) * dotR;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(dx, dy, 2.5, 0, Math.PI*2);
+    ctx.fillStyle = needleColor;
+    ctx.fill();
+    ctx.restore();
+  }
 }
 
 // ── Drag — only within the wheel circle ───────────────────────────────────────
@@ -551,7 +607,7 @@ function applyTimeInput(val) {
   const [h,m] = val.split(':').map(Number);
   const mins = h*60 + m;
   currentDialMins = mins;
-  document.getElementById('dial-slider').value = mins;
+  const _s1=document.getElementById('dial-slider'); if(_s1) _s1.value = mins;
   rotation = minutesToRotation(mins);
   updateDialDisplay(mins);
   draw();
@@ -569,11 +625,21 @@ function setDragScale(active) {
 }
 
 let _hintFaded = false;
+let _hintOpacity = 1.0;
+let _hintFading = false;
 function _fadeHint() {
-  if (_hintFaded) return;
-  _hintFaded = true;
-  const hint = document.getElementById('wheel-hint');
-  if (hint) hint.style.opacity = '0';
+  if (_hintFaded || _hintFading) return;
+  _hintFading = true;
+  const start = performance.now();
+  const dur = 1200;
+  function step(now) {
+    const p = Math.min((now - start) / dur, 1);
+    _hintOpacity = 1 - p;
+    draw();
+    if (p < 1) requestAnimationFrame(step);
+    else { _hintFaded = true; _hintFading = false; }
+  }
+  requestAnimationFrame(step);
 }
 
 canvas.addEventListener('mousedown',e=>{
@@ -589,7 +655,7 @@ window.addEventListener('mousemove',e=>{
   const a=Math.atan2(e.clientY-r.top-cy,e.clientX-r.left-cx)*180/Math.PI;
   rotation+=a-lastAng; lastAng=a;
   currentDialMins=((-rotation/360*1440)%1440+1440)%1440;
-  document.getElementById('dial-slider').value=Math.round(currentDialMins);
+  const _s2=document.getElementById('dial-slider'); if(_s2) _s2.value=Math.round(currentDialMins);
   updateDialDisplay(currentDialMins);
   draw();
 });
@@ -611,7 +677,7 @@ canvas.addEventListener('touchmove',e=>{
   const a=Math.atan2(t.clientY-r.top-cy,t.clientX-r.left-cx)*180/Math.PI;
   rotation+=a-lastAng; lastAng=a;
   currentDialMins=((-rotation/360*1440)%1440+1440)%1440;
-  document.getElementById('dial-slider').value=Math.round(currentDialMins);
+  const _s2=document.getElementById('dial-slider'); if(_s2) _s2.value=Math.round(currentDialMins);
   updateDialDisplay(currentDialMins);
   draw();
 },{passive:false});
@@ -627,7 +693,7 @@ function updateDialDisplay(m){
 function snapToHour(h) {
   const m = (h * 60) % 1440;
   currentDialMins = m;
-  document.getElementById('dial-slider').value = m;
+  const _s3=document.getElementById('dial-slider'); if(_s3) _s3.value = m;
   rotation = minutesToRotation(m);
   updateDialDisplay(m);
   draw();
@@ -933,8 +999,7 @@ const I18N = {
   zh: {
     subtitle: '你的时区伴侣',
     dst: '夏令时', std: '冬令时',
-    hint: '↺ 拖动转盘 · 时间实时联动',
-    dialLabel: '指定当前时间',
+    dialLabel: '指定时间',
     showNums: '显示时刻', hideNums: '隐藏时刻',
     showWake: '显示起床', hideWake: '隐藏起床',
     resetNow: '回到现在',
@@ -945,8 +1010,7 @@ const I18N = {
   en: {
     subtitle: 'Time Zone Companion',
     dst: 'Summer', std: 'Winter',
-    hint: '↺ Drag to rotate · Time syncs live',
-    dialLabel: 'Set current time',
+    dialLabel: 'Set Time',
     showNums: 'Show hours', hideNums: 'Hide hours',
     showWake: 'Show wake', hideWake: 'Hide wake',
     resetNow: 'Now',
@@ -974,14 +1038,23 @@ function toggleLang() {
 function applyLang() {
   const L = I18N[lang];
   const el = id => document.getElementById(id);
-  if(el('brand-sub-text')) el('brand-sub-text').textContent = L.subtitle;
   if(el('dst-label-dst')) el('dst-label-dst').textContent = L.dst;
   if(el('dst-label-std')) el('dst-label-std').textContent = L.std;
-  if(el('wheel-hint')) el('wheel-hint').textContent = L.hint;
   if(el('dial-label')) el('dial-label').textContent = L.dialLabel;
   if(el('lang-btn')) el('lang-btn').textContent = lang === 'zh' ? 'EN' : '中';
   if(el('reset-btn')) el('reset-btn').textContent = L.resetNow;
   if(el('tz-search')) el('tz-search').placeholder = L.search;
+  if(el('settings-title')) el('settings-title').textContent = lang === 'zh' ? '设置' : 'Settings';
+}
+
+function toggleSettings() {
+  const p = document.getElementById('settings-panel');
+  const open = p.style.display === 'none' || p.style.display === '';
+  p.style.display = open ? 'flex' : 'none';
+  if (open) { renderControls(); }
+}
+function closeSettingsOutside(e) {
+  if (e.target === document.getElementById('settings-panel')) toggleSettings();
 }
 
 let panelOrder = ['theme', 'timezone', 'schedule'];
@@ -1007,47 +1080,37 @@ function movePanelUp(id) {
 function renderControls() {
   const col = document.getElementById('controls-col');
   col.innerHTML = '';
-  panelOrder.forEach((id, i) => {
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.dataset.panel = id;
 
-    if (id === 'theme') {
-      card.innerHTML = `
-        <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
-          <span>${t('theme')}</span>${panelUpBtn(id, i)}
-        </div>
-        <div class="themes" id="themes"></div>
-        <div class="legend" id="legend"></div>`;
-    } else if (id === 'timezone') {
-      card.innerHTML = `
-        <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
-          <span>${t('timezone')}</span>${panelUpBtn(id, i)}
-        </div>
-        <div id="tz-list"></div>
-        <div class="add-tz" id="add-tz-row">
-          <input id="tz-search" placeholder="${t('search')}" autocomplete="off"
-            oninput="filterTzOptions(this.value)" onfocus="showTzDropdown()" />
-          <button onclick="addTimezoneFromSearch()">+</button>
-          <div id="tz-dropdown" class="tz-dropdown"></div>
-        </div>`;
-    } else if (id === 'schedule') {
-      card.innerHTML = `
-        <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
-          <span>${t('schedule')}</span>
-          <div style="display:flex;align-items:center;gap:6px">
-            ${panelUpBtn(id, i)}
-            <button class="toggle-btn icon-btn active" id="wake-eye-toggle" onclick="toggleWakeIcons()" title="显示起床/睡觉">${SVG_EYE_OPEN}</button>
-          </div>
-        </div>
-        <div id="sleep-controls"></div>`;
-    }
-    col.appendChild(card);
-  });
+  // ── Combined timezone + theme card ──
+  const tzThemeCard = document.createElement('div');
+  tzThemeCard.className = 'card';
+  tzThemeCard.innerHTML = `
+    <div class="section-title">${t('timezone')}</div>
+    <div id="tz-list"></div>
+    <div class="add-tz" id="add-tz-row">
+      <input id="tz-search" placeholder="${t('search')}" autocomplete="off"
+        oninput="filterTzOptions(this.value)" onfocus="showTzDropdown()" />
+      <button onclick="addTimezoneFromSearch()">+</button>
+      <div id="tz-dropdown" class="tz-dropdown"></div>
+    </div>
+    <hr style="border:none;border-top:1px solid rgba(0,0,0,0.08);margin:14px 0">
+    <div class="themes" id="themes"></div>`;
+  col.appendChild(tzThemeCard);
+
+  // ── Schedule card ──
+  const schedCard = document.createElement('div');
+  schedCard.className = 'card';
+  schedCard.innerHTML = `
+    <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
+      <span>${t('schedule')}</span>
+      <button class="toggle-btn icon-btn active" id="wake-eye-toggle" onclick="toggleWakeIcons()" title="显示起床/睡觉">${SVG_EYE_OPEN}</button>
+    </div>
+    <div id="sleep-controls"></div>`;
+  col.appendChild(schedCard);
+
   renderThemes();
   renderTzList();
   renderSleepControls();
-  renderLegend();
   // Restore wake eye state
   const wakeBtn = document.getElementById('wake-eye-toggle');
   if(wakeBtn) { wakeBtn.classList.toggle('active', showWake); wakeBtn.innerHTML = showWake ? SVG_EYE_OPEN : SVG_EYE_CLOSED; }
@@ -1263,26 +1326,6 @@ localforage.getItem(STORE_KEY).then(data => {
 }).catch(() => { _boot(); setInterval(draw, 10000); });
 
 // ── Splash ────────────────────────────────────────────────────────────────────
-function _playSplashTone() {
-  if (sessionStorage.getItem('around_played')) return;
-  sessionStorage.setItem('around_played', '1');
-  try {
-    const ac = new (window.AudioContext || window.webkitAudioContext)();
-    const play = (freq, t0, dur, vol) => {
-      const o = ac.createOscillator(), g = ac.createGain();
-      o.connect(g); g.connect(ac.destination);
-      o.type = 'sine'; o.frequency.value = freq;
-      g.gain.setValueAtTime(0, t0);
-      g.gain.linearRampToValueAtTime(vol, t0 + 0.08);
-      g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-      o.start(t0); o.stop(t0 + dur);
-    };
-    const t = ac.currentTime + 0.05;
-    play(523.25, t,        0.65, 0.12);
-    play(659.25, t + 0.08, 0.58, 0.09);
-    play(783.99, t + 0.18, 0.52, 0.07);
-  } catch(e) {}
-}
 function _dismissSplash() {
   const el = document.getElementById('splash');
   if (!el) return;
@@ -1290,18 +1333,7 @@ function _dismissSplash() {
   setTimeout(() => { if (el.parentNode) el.remove(); }, 700);
 }
 (function _initSplash() {
-  try {
-    const ac = new (window.AudioContext || window.webkitAudioContext)();
-    if (ac.state === 'running') {
-      setTimeout(_playSplashTone, 150);
-    } else {
-      const tryPlay = () => _playSplashTone();
-      document.addEventListener('touchstart', tryPlay, {once:true});
-      document.addEventListener('click',      tryPlay, {once:true});
-    }
-    ac.close();
-  } catch(e) {}
-  setTimeout(_dismissSplash, 1350);
+  setTimeout(_dismissSplash, 2200);
 })();
 </script>
 </body>
