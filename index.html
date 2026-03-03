@@ -651,6 +651,7 @@ function resetToNow(){
   const stdBtn = document.getElementById('std-btn');
   if(dstBtn) dstBtn.classList.toggle('active', isDST);
   if(stdBtn) stdBtn.classList.toggle('active', !isDST);
+  _updateDstToggle();
 
   const tz0offset = timezones[0]?.offset ?? 0;
   const m = (utcMins + tz0offset*60 + 1440) % 1440;
@@ -864,25 +865,28 @@ function setDST(val) {
   renderAll();
 }
 function _updateDstToggle() {
-  const track = document.getElementById('dst-track');
   const thumb = document.getElementById('dst-thumb');
   const lblDst = document.getElementById('dst-label-dst');
   const lblStd = document.getElementById('dst-label-std');
-  if (!track || !thumb) return;
-  // Measure widths and position thumb
-  requestAnimationFrame(() => {
-    const dstW = lblDst ? lblDst.offsetWidth : 52;
-    const stdW = lblStd ? lblStd.offsetWidth : 52;
-    if (isDST) {
-      thumb.style.width = dstW + 'px';
-      thumb.style.left = '2px';
-    } else {
-      thumb.style.width = stdW + 'px';
-      thumb.style.left = (dstW + 2) + 'px';
+  const track  = document.getElementById('dst-track');
+  if (!thumb || !track) return;
+  // Cache measured widths on first stable layout; reset cache when lang changes
+  if (!track.dataset.measured) {
+    const dw = lblDst ? lblDst.getBoundingClientRect().width : 0;
+    const sw = lblStd ? lblStd.getBoundingClientRect().width : 0;
+    if (dw > 0 && sw > 0) {
+      track.dataset.dstW = Math.ceil(dw);
+      track.dataset.stdW = Math.ceil(sw);
+      track.dataset.measured = '1';
     }
-    if (lblDst) lblDst.classList.toggle('active', isDST);
-    if (lblStd) lblStd.classList.toggle('active', !isDST);
-  });
+  }
+  const dstW = +(track.dataset.dstW || 52);
+  const stdW = +(track.dataset.stdW || 52);
+  // Disable transition briefly if jump is large (e.g. after lang change)
+  thumb.style.width = isDST ? dstW + 'px' : stdW + 'px';
+  thumb.style.left  = isDST ? '2px' : (dstW + 2) + 'px';
+  if (lblDst) lblDst.classList.toggle('active', isDST);
+  if (lblStd) lblStd.classList.toggle('active', !isDST);
 }
 // ── Panel order ───────────────────────────────────────────────────────────────
 let lang = 'zh';
@@ -920,8 +924,12 @@ function toggleLang() {
   lang = lang === 'zh' ? 'en' : 'zh';
   saveSettings();
   applyLang();
+  // Reset cached widths so _updateDstToggle re-measures for new language
+  const track = document.getElementById('dst-track');
+  if (track) delete track.dataset.measured;
   renderControls();
   draw();
+  _updateDstToggle();
 }
 
 function applyLang() {
