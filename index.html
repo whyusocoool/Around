@@ -11,6 +11,7 @@
   #splash {
     position:fixed; inset:0; z-index:9999;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding-bottom:20vh;
     background:linear-gradient(160deg,#fdf8f2 0%,#f5ede8 55%,#ede8f5 100%);
     transition:opacity 0.65s ease;
   }
@@ -42,8 +43,8 @@
 <style>
   :root { --bg:#f5f0e8; --text:#3a3228; --text-light:#8a7e72; --card-bg:#ede8de; --accent:#f7cbd1; }
   * { margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-user-select:none; }
-  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:20px 16px; }
-  .brand { text-align:center; margin-bottom:18px; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:10px 16px; }
+  .brand { text-align:center; margin-bottom:10px; }
   .brand-zh { font-family:'DM Serif Display',serif; font-size:2.6rem; letter-spacing:0.02em; line-height:1; }
   .brand-en { font-size:0.7rem; letter-spacing:0.28em; color:var(--text-light); text-transform:uppercase; margin-top:5px; }
   .brand-sub { font-size:0.74rem; color:var(--text-light); margin-top:8px; display:flex; gap:6px; justify-content:center; }
@@ -104,8 +105,7 @@
   input[type=range] { width:100%; height:4px; border-radius:2px; outline:none; border:none; cursor:pointer; -webkit-appearance:none; }
   input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--thumb-color,#8a7e72); cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.2); }
   .dial-slider::-webkit-slider-thumb { width:10px; height:10px; }
-  input[type=range].wake-slider { background:linear-gradient(to right,#f9c784,#f4a261); --thumb-color:#e07b54; }
-  input[type=range].sleep-slider { background:linear-gradient(to right,#a8c5e8,#7090c0); --thumb-color:#5070a0; }
+  input[type=range].wake-slider, input[type=range].sleep-slider { --thumb-color:#8a7e72; }
   .tz-schedule-block { padding:10px 12px; background:rgba(255,255,255,0.45); border-radius:12px; margin-bottom:8px; }
   .tz-schedule-block:last-child { margin-bottom:0; }
   .tz-schedule-header { display:flex; align-items:center; gap:6px; margin-bottom:8px; }
@@ -126,8 +126,8 @@
   .legend { display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; }
   .legend-item { display:flex; align-items:center; gap:5px; font-size:0.72rem; color:var(--text-light); }
   .legend-swatch { width:10px; height:10px; border-radius:50%; }
-  .dial-card { margin-top:0; padding:14px 16px; width:100%; max-width:275px; }
-  .dial-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .dial-card { margin-top:0; padding:10px 16px 8px; width:100%; max-width:275px; }
+  .dial-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
   .dial-label { font-size:0.65rem; font-weight:600; letter-spacing:0.08em; color:var(--text-light); margin-bottom:3px; }
   .dial-time { font-family:'DM Serif Display',serif; font-size:1.5rem; color:var(--text); letter-spacing:-0.5px; }
   .dial-controls { display:flex; gap:8px; align-items:center; }
@@ -194,10 +194,6 @@
 <!-- Settings panel overlay -->
 <div id="settings-panel" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.18);backdrop-filter:blur(2px)" onclick="closeSettingsOutside(event)">
   <div id="settings-drawer" style="position:absolute;right:0;top:0;bottom:0;width:min(320px,92vw);background:var(--bg);overflow-y:auto;padding:24px 18px;box-shadow:-4px 0 24px rgba(0,0,0,0.10)">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-      <span id="settings-title" style="font-family:'DM Serif Display',serif;font-size:1.1rem">设置</span>
-      <button onclick="toggleSettings()" style="background:none;border:none;cursor:pointer;font-size:1.2rem;color:var(--text-light)">✕</button>
-    </div>
     <div class="controls" id="controls-col"></div>
   </div>
 </div>
@@ -218,7 +214,7 @@ const THEMES = [
   {name:'清绿', p:['#2e9e68','#98dab0','#c8d840'], bg:'#f8fce8', card:'#eef5d8'},  // deep sage + mint middle + lime outer
   {name:'卡其', p:['#d88e36','#c2ccb8','#b25d3f'], bg:'#f7f3eb', card:'#ede6d8'},  // amber + terracotta + sage — Korean autumn
   {name:'梦幻', p:['#b290ca','#dbeae5','#e4d4db'], bg:'#f4f2f8', card:'#eae6f2'},  // purple + mint mist middle + blush mauve
-  {name:'商务', p:['#333941','#8c3828','#b0b2b3'], bg:'#eceae4', card:'#e2dfd8'},  // pebble + fern + dusk — mindful editorial
+  {name:'商务', p:['#4a5666','#c9634a','#a8aaab'], bg:'#eceae4', card:'#e2dfd8'},  // slate blue + brick red + warm grey
 ];
 
 let theme = THEMES[0];
@@ -276,9 +272,9 @@ function applyBrightness(hex, factor) {
   let c = hex.replace('#','');
   if(c.length===3) c=c.split('').map(x=>x+x).join('');
   let r=parseInt(c.slice(0,2),16), g=parseInt(c.slice(2,4),16), b=parseInt(c.slice(4,6),16);
-  // Adaptive dark floor: darker base colors get a lower floor so contrast stays visible
+  // Base color = midday color. Press toward dark floor at night.
   const lum = (0.299*r + 0.587*g + 0.114*b) / 255;
-  const dark = lum < 0.35 ? 8 : 40;
+  const dark = lum > 0.5 ? 40 : 6;
   return `rgb(${Math.round(dark+(r-dark)*factor)},${Math.round(dark+(g-dark)*factor)},${Math.round(dark+(b-dark)*factor)})`;
 }
 
@@ -932,6 +928,17 @@ function renderTzList(){
   const si = document.getElementById('tz-search');
   if(si) si.placeholder = t('search');
 }
+function _sliderGradient(color) {
+  // Build 25-stop day/night gradient for a given theme color
+  const stops = [];
+  for (let h = 0; h <= 24; h++) {
+    const b = daylightBrightness(h % 24);
+    const col = applyBrightness(color, b);
+    stops.push(`${col} ${(h/24*100).toFixed(1)}%`);
+  }
+  return `linear-gradient(to right, ${stops.join(', ')})`;
+}
+
 function renderSleepControls(){
   const el=document.getElementById('sleep-controls'); el.innerHTML='';
   timezones.forEach((tz,i)=>{
@@ -942,7 +949,9 @@ function renderSleepControls(){
       : `width:12px;height:12px;border-radius:50%;background:transparent;border:3.6px solid ${c};flex-shrink:0`;
     const wakeLabel = t('wake');
     const sleepLabel = t('sleep');
-    d.innerHTML=`<div class="tz-schedule-header"><div style="${dotStyle}"></div><span style="font-size:0.82rem;font-weight:500;margin-left:6px">${tzDisplayName(tz)}</span></div><div class="sleep-row"><div class="sleep-label"><span style="display:flex;align-items:center;gap:4px">${SVG_SUN}${wakeLabel}</span><span class="sleep-time-badge" id="wake-val-${i}">${String(s.wake).padStart(2,'0')}:00</span></div><input type="range" class="wake-slider" min="0" max="24" value="${s.wake}" oninput="updateSchedule(${i},'wake',this.value)"></div><div class="sleep-row"><div class="sleep-label"><span style="display:flex;align-items:center;gap:4px">${SVG_MOON}${sleepLabel}</span><span class="sleep-time-badge" id="sleep-val-${i}">${String(s.sleep).padStart(2,'0')}:00</span></div><input type="range" class="sleep-slider" min="0" max="24" value="${s.sleep}" oninput="updateSchedule(${i},'sleep',this.value)"></div>`;
+    const grad = _sliderGradient(c);
+    const thumbCol = applyBrightness(c, 0.72);
+    d.innerHTML=`<div class="tz-schedule-header"><div style="${dotStyle}"></div><span style="font-size:0.82rem;font-weight:500;margin-left:6px">${tzDisplayName(tz)}</span></div><div class="sleep-row"><div class="sleep-label"><span style="display:flex;align-items:center;gap:4px">${SVG_SUN}${wakeLabel}</span><span class="sleep-time-badge" id="wake-val-${i}">${String(s.wake).padStart(2,'0')}:00</span></div><input type="range" class="wake-slider" style="background:${grad};--thumb-color:${thumbCol}" min="0" max="24" value="${s.wake}" oninput="updateSchedule(${i},'wake',this.value)"></div><div class="sleep-row"><div class="sleep-label"><span style="display:flex;align-items:center;gap:4px">${SVG_MOON}${sleepLabel}</span><span class="sleep-time-badge" id="sleep-val-${i}">${String(s.sleep).padStart(2,'0')}:00</span></div><input type="range" class="sleep-slider" style="background:${grad};--thumb-color:${thumbCol}" min="0" max="24" value="${s.sleep}" oninput="updateSchedule(${i},'sleep',this.value)"></div>`;
     el.appendChild(d);
   });
 }
@@ -1040,8 +1049,8 @@ function applyLang() {
   const el = id => document.getElementById(id);
   if(el('dst-label-dst')) el('dst-label-dst').textContent = L.dst;
   if(el('dst-label-std')) el('dst-label-std').textContent = L.std;
-  if(el('dial-label')) el('dial-label').textContent = L.dialLabel;
   if(el('lang-btn')) el('lang-btn').textContent = lang === 'zh' ? 'EN' : '中';
+  if(el('dial-label')) el('dial-label').textContent = L.dialLabel;
   if(el('reset-btn')) el('reset-btn').textContent = L.resetNow;
   if(el('tz-search')) el('tz-search').placeholder = L.search;
   if(el('settings-title')) el('settings-title').textContent = lang === 'zh' ? '设置' : 'Settings';
