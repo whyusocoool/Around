@@ -76,7 +76,7 @@
     .wheel-col { width:100%; max-width:275px; }
     .dial-card { max-width:100% !important; }
   }
-  .wheel-hint { font-size:0.7rem; color:var(--text-light); text-align:center; margin-top:8px; letter-spacing:0.03em; }
+  .wheel-hint { font-size:0.7rem; color:var(--text-light); text-align:center; margin-top:8px; letter-spacing:0.03em; transition:opacity 1.2s ease; }
   .controls { display:flex; flex-direction:column; gap:14px; min-width:230px; max-width:275px; }
   .section-title { font-family:'DM Serif Display',serif; font-size:1rem; margin-bottom:8px; }
   .card { background:var(--card-bg); border-radius:16px; padding:16px; }
@@ -344,14 +344,18 @@ function draw() {
         const midAng=(a0+a1)/2;
         const pr = showNumbers ? outerR - 10 : (innerR+outerR)/2;
         const px=cx+Math.cos(midAng)*pr, py=cy+Math.sin(midAng)*pr;
-        if(showNumbers) {
+        // If this segment has a wake/sleep icon, skip the number
+        const sleepHcheck = schedule.sleep % 24;
+        const lastAwakeHcheck = (sleepHcheck === 0 ? 23 : sleepHcheck - 1);
+        const hasIcon = showWake && (localH === schedule.wake || localH === lastAwakeHcheck);
+        if(showNumbers && !hasIcon) {
           ctx.save();
           ctx.font='600 9px DM Sans';
           ctx.fillStyle='rgba(255,255,255,0.95)';
           ctx.textAlign='center'; ctx.textBaseline='middle';
           ctx.fillText(localH, px, py);
           ctx.restore();
-        } else {
+        } else if(!showNumbers && !hasIcon) {
           ctx.save();
           ctx.beginPath();
           ctx.arc(px, py, 2.8, 0, Math.PI*2);
@@ -419,20 +423,46 @@ function draw() {
     }
   }
 
-  // ── Needle: long, matches tz[0] color ──
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(cx,needleBot);
-  ctx.lineTo(cx,needleTop+4);
-  ctx.strokeStyle=needleColor;
-  ctx.lineWidth=2.5;
-  ctx.lineCap='round';
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(cx,needleTop+4,4,0,Math.PI*2);
-  ctx.fillStyle=needleColor;
-  ctx.fill();
-  ctx.restore();
+  // ── Needle: straight line tapering only at the very bottom tip ──
+  {
+    const lineW = 1.4;  // uniform half-width for most of the length
+    const tipW  = 0.3;  // half-width at bottom tip
+    const tipLen = 10;  // how many px from bottom the taper starts
+    const top = needleTop + 4;
+    const bot = needleBot + 8;
+    const taperStart = bot - tipLen;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(cx - lineW, top);
+    ctx.lineTo(cx + lineW, top);
+    ctx.lineTo(cx + lineW, taperStart);
+    ctx.lineTo(cx + tipW,  bot);
+    ctx.lineTo(cx - tipW,  bot);
+    ctx.lineTo(cx - lineW, taperStart);
+    ctx.closePath();
+    ctx.fillStyle = needleColor;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ── Orbiting dot: floats at needleTop radius, tracks real current time ──
+  {
+    const now = new Date();
+    const realMins = (now.getUTCHours()*60 + now.getUTCMinutes() + now.getUTCSeconds()/60
+                      + (timezones[0]?.offset ?? 0)*60 + 2880) % 1440;
+    // Angle offset from dial position: when realMins === currentDialMins, dot sits at top (needle)
+    const diffMins = realMins - currentDialMins;
+    const dotAng = -Math.PI/2 + (diffMins / 1440) * Math.PI * 2;
+    const dotR = outermost + 33;
+    const dx = cx + Math.cos(dotAng) * dotR;
+    const dy = cy + Math.sin(dotAng) * dotR;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(dx, dy, 2.5, 0, Math.PI*2);
+    ctx.fillStyle = needleColor;
+    ctx.fill();
+    ctx.restore();
+  }
 
   // ── Labels: ring color for time, dark for name, well above needle ──
   const labelY=needleTop-16;
@@ -536,11 +566,20 @@ function setDragScale(active) {
   wc.style.transition = active ? 'transform 0.12s ease' : 'transform 0.2s ease';
 }
 
+let _hintFaded = false;
+function _fadeHint() {
+  if (_hintFaded) return;
+  _hintFaded = true;
+  const hint = document.getElementById('wheel-hint');
+  if (hint) hint.style.opacity = '0';
+}
+
 canvas.addEventListener('mousedown',e=>{
   if(!isInsideWheel(e.offsetX, e.offsetY)) return;
   dragging=true;
   setDragScale(true);
   lastAng=Math.atan2(e.offsetY-cy,e.offsetX-cx)*180/Math.PI;
+  _fadeHint();
 });
 window.addEventListener('mousemove',e=>{
   if(!dragging)return;
@@ -560,6 +599,7 @@ canvas.addEventListener('touchstart',e=>{
   dragging=true;
   setDragScale(true);
   lastAng=Math.atan2(localY-cy,localX-cx)*180/Math.PI;
+  _fadeHint();
   e.preventDefault();
 },{passive:false});
 canvas.addEventListener('touchmove',e=>{
@@ -751,7 +791,12 @@ function initTzDrag(el, listEl) {
     e.preventDefault();
     const dy = e.clientY - tzDragStartY;
     const rect = el.getBoundingClientRect();
-    tzDragGhost.style.top = (rect.top + dy) + 'px';
+    const listRect = listEl.getBoundingClientRect();
+    const ghostH = tzDragGhost.offsetHeight || rect.height;
+    const minTop = listRect.top;
+    const maxTop = listRect.bottom - ghostH;
+    const rawTop = rect.top + dy;
+    tzDragGhost.style.top = Math.min(Math.max(rawTop, minTop), maxTop) + 'px';
 
     // Find which row we're hovering over
     const rows = [...listEl.querySelectorAll('.timezone-row')];
@@ -1193,7 +1238,7 @@ function _applySettings(s) {
   }
   if (s.lang === 'en' || s.lang === 'zh') lang = s.lang;
   if (Array.isArray(s.panelOrder) && s.panelOrder.length === 3) panelOrder = s.panelOrder;
-  if (typeof s.showNumbers === 'boolean') showNumbers = s.showNumbers;
+  if (typeof s.showNumbers === 'boolean') showNumbers = s.showNumbers; else showNumbers = true;
   if (typeof s.showWake === 'boolean') showWake = s.showWake;
   return true;
 }
@@ -1211,7 +1256,9 @@ function _boot() {
 localforage.getItem(STORE_KEY).then(data => {
   _applySettings(data);
   _boot();
-}).catch(() => _boot());
+  // Redraw every 10s so clock hand tracks real time
+  setInterval(draw, 10000);
+}).catch(() => { _boot(); setInterval(draw, 10000); });
 
 // ── Splash ────────────────────────────────────────────────────────────────────
 function _playSplashTone() {
