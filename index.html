@@ -41,13 +41,13 @@
   }
 </style>
 <style>
-  :root { --bg:#f5f0e8; --text:#3a3228; --text-light:#8a7e72; --card-bg:#ede8de; --accent:#f7cbd1; }
+  :root { --bg:#fdfcfa; --text:#3a3228; --text-light:#8a7e72; --card-bg:#f8f5f0; --accent:#f7cbd1; }
   * { margin:0; padding:0; box-sizing:border-box; user-select:none; -webkit-user-select:none; }
   body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:10px 16px; }
   .brand { text-align:center; margin-bottom:10px; }
   .brand-zh { font-family:'DM Serif Display',serif; font-size:2.6rem; letter-spacing:0.02em; line-height:1; }
   .brand-en { font-size:0.7rem; letter-spacing:0.28em; color:var(--text-light); text-transform:uppercase; margin-top:5px; }
-  .brand-sub { font-size:0.74rem; color:var(--text-light); margin-top:8px; display:flex; gap:6px; justify-content:center; }
+  .brand-sub { font-size:0.74rem; color:var(--text-light); margin-top:18px; display:flex; gap:6px; justify-content:center; }
   .dst-btn { font-size:0.72rem; font-family:'DM Sans',sans-serif; color:var(--text-light); background:rgba(0,0,0,0.06); border:none; border-radius:20px; padding:4px 12px; cursor:pointer; transition:all 0.2s; }
   .dst-btn.active { background:var(--accent); color:#fff; }
   .dst-btn:hover:not(.active) { background:rgba(0,0,0,0.12); }
@@ -77,10 +77,9 @@
   .main { display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap; justify-content:center; width:100%; max-width:980px; }
   .wheel-col { display:flex; flex-direction:column; align-items:center; flex-shrink:0; }
   #wheel-container { position:relative; cursor:grab; user-select:none; }
-  html, body { overflow-x:hidden; overflow-y:auto; max-width:100vw; touch-action:pan-y; }
-  body { overflow-x:hidden; overflow-y:auto; }
+  html, body { overflow:hidden; max-width:100vw; touch-action:none; }
   #wheel-container:active { cursor:grabbing; }
-  canvas { display:block; max-width:100%; touch-action:pan-y; }
+  canvas { display:block; max-width:100%; touch-action:none; }
   @media (max-width: 560px) {
     #wheel-container { transform-origin: top center; }
     .wheel-col { width:100%; max-width:275px; }
@@ -118,11 +117,11 @@
   .tz-option:hover { background:rgba(0,0,0,0.05); }
   .tz-option-name { font-weight:500; }
   .tz-option-meta { font-size:0.7rem; color:var(--text-light); white-space:nowrap; }
-  .themes { display:flex; gap:8px; flex-wrap:wrap; }
-  .theme-btn { width:32px; height:32px; border-radius:50%; border:2px solid transparent; cursor:pointer; transition:transform 0.2s,border-color 0.2s; display:flex; overflow:hidden; flex-shrink:0; }
-  .theme-btn:hover { transform:scale(1.12); }
-  .theme-btn.active { border-color:var(--text); }
-  .theme-third { width:33.4%; height:100%; }
+  .themes { display:flex; gap:5px; flex-wrap:nowrap; align-items:center; justify-content:space-between; }
+  .theme-btn { width:28px; height:48px; border-radius:0; border:none; background:none; padding:0; cursor:pointer; transition:transform 0.2s,opacity 0.2s; display:flex; align-items:center; justify-content:center; flex-shrink:0; position:relative; }
+  .theme-btn:hover { transform:scale(1.06) translateY(-2px); }
+  .theme-btn.active { transform:scale(1.10) translateY(-3px); }
+  .theme-btn.active::after { content:''; position:absolute; bottom:-8px; left:50%; transform:translateX(-50%); width:14px; height:2px; border-radius:1px; background:var(--text); }
   .legend { display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; }
   .legend-item { display:flex; align-items:center; gap:5px; font-size:0.72rem; color:var(--text-light); }
   .legend-swatch { width:10px; height:10px; border-radius:50%; }
@@ -138,9 +137,69 @@
   .dial-tick { position:absolute; top:50%; transform:translateY(-50%); width:1px; height:7px; background:#b8afa6; border-radius:1px; cursor:pointer; pointer-events:auto; }
   .dial-tick:hover { background:#8a7e72; }
   .dial-slider { width:100%; height:2px; border-radius:1px; background:#c8c0b8; --thumb-color:#8a7e72; position:relative; z-index:1; }
+
+  /* ── Onboarding tooltip ─────────────────────────────────────────────────── */
+  #onboarding-overlay {
+    position:fixed; inset:0; z-index:2000;
+    background:rgba(0,0,0,0.22); backdrop-filter:blur(2px);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; transition:opacity 0.4s ease;
+    pointer-events:none;
+  }
+  #onboarding-overlay.visible { opacity:1; pointer-events:auto; }
+  #onboarding-box {
+    background:#fff; border-radius:18px;
+    padding:28px 26px 20px;
+    max-width:260px; width:88vw;
+    box-shadow:0 8px 32px rgba(0,0,0,0.14);
+    transform:translateY(12px); transition:transform 0.4s ease;
+    font-family:'DM Sans',sans-serif;
+  }
+  #onboarding-overlay.visible #onboarding-box { transform:translateY(0); }
+  .ob-title { font-family:'DM Serif Display',serif; font-size:1rem; color:#3a3228; margin-bottom:16px; }
+  .ob-row { display:flex; align-items:center; gap:10px; margin-bottom:12px; font-size:0.82rem; color:#5a5248; line-height:1.4; }
+  .ob-icon { flex-shrink:0; width:28px; height:28px; border-radius:50%; background:rgba(0,0,0,0.06); display:flex; align-items:center; justify-content:center; }
+  .ob-dismiss { margin-top:18px; width:100%; border:none; background:none; font-family:'DM Sans',sans-serif; font-size:0.75rem; color:#a09488; cursor:pointer; letter-spacing:0.04em; padding:4px 0; }
+  .ob-dismiss:hover { color:#6a5e52; }
 </style>
 </head>
 <body>
+
+
+<div id="onboarding-overlay">
+  <div id="onboarding-box">
+    <div class="ob-title" style="text-align:center">图标说明</div>
+    <div style="display:flex;justify-content:center;gap:40px;margin-top:4px">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+        <div class="ob-icon">
+          <svg width="14" height="14" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="6.5" cy="6.5" r="2.2" fill="currentColor"/>
+            <g stroke="currentColor" stroke-width="1.1" stroke-linecap="round">
+              <line x1="6.5" y1="0.8" x2="6.5" y2="2.2"/>
+              <line x1="6.5" y1="10.8" x2="6.5" y2="12.2"/>
+              <line x1="0.8" y1="6.5" x2="2.2" y2="6.5"/>
+              <line x1="10.8" y1="6.5" x2="12.2" y2="6.5"/>
+              <line x1="2.4" y1="2.4" x2="3.4" y2="3.4"/>
+              <line x1="9.6" y1="9.6" x2="10.6" y2="10.6"/>
+              <line x1="10.6" y1="2.4" x2="9.6" y2="3.4"/>
+              <line x1="3.4" y1="9.6" x2="2.4" y2="10.6"/>
+            </g>
+          </svg>
+        </div>
+        <span style="font-size:0.75rem;color:#5a5248">起床时间</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+        <div class="ob-icon">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10.5 7.8A4.5 4.5 0 0 1 5.2 2.5a4.5 4.5 0 1 0 5.3 5.3z"/>
+          </svg>
+        </div>
+        <span style="font-size:0.75rem;color:#5a5248">睡觉时间</span>
+      </div>
+    </div>
+    <button class="ob-dismiss" onclick="dismissOnboarding()">不再提醒</button>
+  </div>
+</div>
 
 <div id="splash">
   <div id="splash-title">We're Around.</div>
@@ -192,8 +251,8 @@
 </div>
 
 <!-- Settings panel overlay -->
-<div id="settings-panel" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.18);backdrop-filter:blur(2px)" onclick="closeSettingsOutside(event)">
-  <div id="settings-drawer" style="position:absolute;right:0;top:0;bottom:0;width:min(320px,92vw);background:var(--bg);overflow-y:auto;padding:24px 18px;box-shadow:-4px 0 24px rgba(0,0,0,0.10)">
+<div id="settings-panel" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.10);backdrop-filter:blur(1px)" onclick="closeSettingsOutside(event)">
+  <div id="settings-drawer" style="position:absolute;right:0;top:0;bottom:0;width:min(320px,92vw);background:#ffffff;overflow-y:auto;padding:16px 18px;box-shadow:-4px 0 16px rgba(0,0,0,0.05)">
     <div class="controls" id="controls-col"></div>
   </div>
 </div>
@@ -209,15 +268,17 @@ function _lightAccent(hex) {
   return '#'+mix(r)+mix(g)+mix(b);
 }
 const THEMES = [
-  {name:'春日', p:['#f2a5b0','#a8d5a2','#f9c06a'], bg:'#f5f0e8', card:'#ede8de'},
-  {name:'活力', p:['#f58b05','#7fbbdd','#ffc22f'], bg:'#eef7fc', card:'#dceef8'},  // sky blue + orange + golden yellow
-  {name:'清绿', p:['#2e9e68','#98dab0','#c8d840'], bg:'#f8fce8', card:'#eef5d8'},  // deep sage + mint middle + lime outer
-  {name:'卡其', p:['#d88e36','#c2ccb8','#b25d3f'], bg:'#f7f3eb', card:'#ede6d8'},  // amber + terracotta + sage — Korean autumn
-  {name:'梦幻', p:['#b290ca','#dbeae5','#e4d4db'], bg:'#f4f2f8', card:'#eae6f2'},  // purple + mint mist middle + blush mauve
-  {name:'商务', p:['#4a5666','#c9634a','#a8aaab'], bg:'#eceae4', card:'#e2dfd8'},  // slate blue + brick red + warm grey
+  {name:'春日', p:['#f2a5b0','#a8d5a2','#f9c06a'], bg:'#fdfcfa', card:'#f8f5f0'},
+  {name:'活力', p:['#f58b05','#7fbbdd','#ffc22f'], bg:'#fafcfe', card:'#f0f7fc'},  // sky blue + orange + golden yellow
+  {name:'清绿', p:['#2e9e68','#98dab0','#c8d840'], bg:'#fbfef4', card:'#f3f9e6'},  // deep sage + mint middle + lime outer
+  {name:'卡其', p:['#d88e36','#c2ccb8','#b25d3f'], bg:'#fdfaf5', card:'#f5f0e6'},  // amber + terracotta + sage — Korean autumn
+  {name:'梦幻', p:['#b290ca','#dbeae5','#e4d4db'], bg:'#fbfafd', card:'#f4f1fa'},  // purple + mint mist middle + blush mauve
+  {name:'商务', p:['#4a5666','#c9634a','#a8aaab'], bg:'#f7f6f2', card:'#efede8'},
+  {name:'昼夜', p:['#707070','#909090','#b0b0b0'], bg:'#f8f8f8', card:'#efefef'},  // monochrome: pure day/night contrast  // slate blue + brick red + warm grey
 ];
 
 let theme = THEMES[0];
+function isNightMode() { return theme.name === '昼夜'; }
 let rotation = 0;
 let showNumbers = true;
 let showWake = true;
@@ -228,7 +289,6 @@ let currentDialMins = 0;
 const BASE_OFFSETS = [
   {name:'中国 CN',  en:'China',       base:8,  dst:false},
   {name:'荷兰 NL',  en:'Netherlands', base:1,  dst:true},
-  {name:'美西 PT',  en:'US West',     base:-8, dst:true},
 ];
 
 let isDST = true; // default summer
@@ -241,7 +301,6 @@ let timezones = BASE_OFFSETS.map(tz => ({
   baseOffset: tz.base,
 }));
 let schedules = [
-  {wake:7, sleep:23},
   {wake:7, sleep:23},
   {wake:7, sleep:23},
 ];
@@ -272,8 +331,13 @@ function applyBrightness(hex, factor) {
   let c = hex.replace('#','');
   if(c.length===3) c=c.split('').map(x=>x+x).join('');
   let r=parseInt(c.slice(0,2),16), g=parseInt(c.slice(2,4),16), b=parseInt(c.slice(4,6),16);
-  // Base color = midday color. Press toward dark floor at night.
   const lum = (0.299*r + 0.587*g + 0.114*b) / 255;
+  // Monochrome (昼夜): smooth black→light grey, same curve as other themes
+  const isGrey = Math.abs(r-g)<12 && Math.abs(g-b)<12;
+  if (isGrey) {
+    const v = Math.round(2 + 208*factor);
+    return `rgb(${v},${v},${v})`;
+  }
   const dark = lum > 0.5 ? 40 : 6;
   return `rgb(${Math.round(dark+(r-dark)*factor)},${Math.round(dark+(g-dark)*factor)},${Math.round(dark+(b-dark)*factor)})`;
 }
@@ -339,7 +403,7 @@ function draw() {
       const isAwake=schedule.wake<=schedule.sleep
         ?(localH>=schedule.wake&&localH<schedule.sleep)
         :(localH>=schedule.wake||localH<schedule.sleep);
-      if(!isAwake) continue;
+      if(!isAwake && !isNightMode()) continue;
 
       const isMarker=[0,3,6,9,12,15,18,21].includes(localH);
       const brightness=daylightBrightness(localH);
@@ -355,7 +419,7 @@ function draw() {
         // If this segment has a wake/sleep icon, skip the number
         const sleepHcheck = schedule.sleep % 24;
         const lastAwakeHcheck = (sleepHcheck === 0 ? 23 : sleepHcheck - 1);
-        const hasIcon = showWake && (localH === schedule.wake || localH === lastAwakeHcheck);
+        const hasIcon = showWake && !isNightMode() && (localH === schedule.wake || localH === lastAwakeHcheck);
         if(showNumbers && !hasIcon) {
           ctx.save();
           ctx.font='600 9px DM Sans';
@@ -374,7 +438,7 @@ function draw() {
       }
 
       // ── Wake/Sleep icons: monochrome, inside outermost edge of segment ──
-      if(showWake) {
+      if(showWake && !isNightMode()) {
         const iconR = outerR - 9; // inside the segment
         const iconColor = 'rgba(255,255,255,0.92)';
 
@@ -957,11 +1021,54 @@ function renderSleepControls(){
 }
 function renderThemes(){
   const el=document.getElementById('themes'); el.innerHTML='';
-  THEMES.forEach(t=>{
-    const b=document.createElement('div');
+  const W=28, H=50, wN=8, wW=26, rN=3, rW=7;
+
+  function trap() {
+    // narrow top, wide bottom, large radius at bottom
+    const txl=(W-wN)/2, txr=(W+wN)/2;
+    const bxl=(W-wW)/2, bxr=(W+wW)/2;
+    const dx=bxl-txl, legLen=Math.sqrt(dx*dx+H*H);
+    const sa=Math.abs(dx)/legLen, ca=H/legLen;
+    const otx=rN*sa, oty=rN*ca;
+    const obx=rW*sa, oby=rW*ca;
+    return `M ${txl+rN},0 L ${txr-rN},0 Q ${txr},0 ${txr+otx},${oty} L ${bxr-obx},${H-oby} Q ${bxr},${H} ${bxr-rW},${H} L ${bxl+rW},${H} Q ${bxl},${H} ${bxl+obx},${H-oby} L ${txl-otx},${oty} Q ${txl},0 ${txl+rN},0 Z`;
+  }
+
+  const basePath = trap();
+  const h3 = H/3;
+
+  THEMES.forEach((t,idx)=>{
+    const b=document.createElement('button');
     b.className='theme-btn'+(theme===t?' active':''); b.title=t.name;
-    b.innerHTML=`<div class="theme-third" style="background:${t.p[0]}"></div><div class="theme-third" style="background:${t.p[1]}"></div><div class="theme-third" style="background:${t.p[2]}"></div>`;
-    b.onclick=()=>{theme=t;document.documentElement.style.setProperty('--bg',t.bg);document.documentElement.style.setProperty('--card-bg',t.card);document.documentElement.style.setProperty('--accent', _lightAccent(t.p[0]));document.body.style.background=t.bg;renderAll();};
+    const flip = idx % 2 === 1;
+    // flip = vertically mirror the shape, and reverse color order
+    const xf = flip ? `transform="scale(1,-1) translate(0,${-H})"` : '';
+    const colors = flip ? [t.p[2], t.p[1], t.p[0]] : [t.p[0], t.p[1], t.p[2]];
+    const clipId = `cl${idx}`;
+
+    let svgContent;
+    if (t.name === '昼夜') {
+      const gradId = `bwg${idx}`;
+      // gradient always dark→light top to bottom in screen space
+      svgContent = `<defs>
+        <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#1a1a1a"/>
+          <stop offset="100%" stop-color="#e8e8e8"/>
+        </linearGradient>
+        <clipPath id="${clipId}"><path d="${basePath}" ${xf}/></clipPath>
+      </defs>
+      <rect x="0" y="0" width="${W}" height="${H}" fill="url(#${gradId})" clip-path="url(#${clipId})"/>`;
+    } else {
+      svgContent = `<defs>
+        <clipPath id="${clipId}"><path d="${basePath}" ${xf}/></clipPath>
+      </defs>
+      <rect x="0" y="0"       width="${W}" height="${h3}"  fill="${colors[0]}" clip-path="url(#${clipId})"/>
+      <rect x="0" y="${h3}"   width="${W}" height="${h3}"  fill="${colors[1]}" clip-path="url(#${clipId})"/>
+      <rect x="0" y="${h3*2}" width="${W}" height="${h3}"  fill="${colors[2]}" clip-path="url(#${clipId})"/>`;
+    }
+
+    b.innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible">${svgContent}</svg>`;
+    b.onclick=()=>{theme=t;document.documentElement.style.setProperty('--bg',t.bg);document.documentElement.style.setProperty('--card-bg',t.card);document.documentElement.style.setProperty('--accent',_lightAccent(t.p[0]));document.body.style.background=t.bg;renderAll();};
     el.appendChild(b);
   });
 }
@@ -1108,21 +1215,32 @@ function renderControls() {
 
   // ── Schedule card ──
   const schedCard = document.createElement('div');
-  schedCard.className = 'card';
-  schedCard.innerHTML = `
-    <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
-      <span>${t('schedule')}</span>
-      <button class="toggle-btn icon-btn active" id="wake-eye-toggle" onclick="toggleWakeIcons()" title="显示起床/睡觉">${SVG_EYE_OPEN}</button>
-    </div>
-    <div id="sleep-controls"></div>`;
+  schedCard.className = isNightMode() ? '' : 'card';
+  if (isNightMode()) schedCard.style.cssText = 'width:100%;min-width:200px';
+  if (isNightMode()) {
+    schedCard.innerHTML = `<div style="font-size:0.78rem;color:var(--text-light);line-height:2;text-align:right;padding:0 4px;width:100%;box-sizing:border-box">
+      <div style="font-size:0.85rem;font-weight:500;color:var(--text);margin-bottom:4px">昼夜对照模式</div>
+      <div>深色为夜，浅色为昼</div>
+      <div>此模式聚焦于自然昼夜节律</div>
+      <div>无需设置个人作息</div>
+    </div>`;
+  } else {
+    schedCard.innerHTML = `
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between">
+        <span>${t('schedule')}</span>
+        <button class="toggle-btn icon-btn active" id="wake-eye-toggle" onclick="toggleWakeIcons()" title="显示起床/睡觉">${SVG_EYE_OPEN}</button>
+      </div>
+      <div id="sleep-controls"></div>`;
+  }
   col.appendChild(schedCard);
 
   renderThemes();
   renderTzList();
-  renderSleepControls();
-  // Restore wake eye state
-  const wakeBtn = document.getElementById('wake-eye-toggle');
-  if(wakeBtn) { wakeBtn.classList.toggle('active', showWake); wakeBtn.innerHTML = showWake ? SVG_EYE_OPEN : SVG_EYE_CLOSED; }
+  if (!isNightMode()) {
+    renderSleepControls();
+    const wakeBtn = document.getElementById('wake-eye-toggle');
+    if(wakeBtn) { wakeBtn.classList.toggle('active', showWake); wakeBtn.innerHTML = showWake ? SVG_EYE_OPEN : SVG_EYE_CLOSED; }
+  }
 }
 
 // ── Preset timezone list ──
@@ -1204,7 +1322,7 @@ function renderDropdown(list) {
   dd.innerHTML = '';
   list.forEach(p => {
     const offset = p.dst && isDST ? p.base + 1 : p.base;
-    const offStr = `UTC${offset >= 0 ? '+' : ''}${offset}${p.dst ? ' ☀︎' : ''}`;
+    const offStr = `UTC${offset >= 0 ? '+' : ''}${offset}`;
     const displayName = lang === 'en' && p.en ? p.en : p.name;
     const div = document.createElement('div');
     div.className = 'tz-option';
@@ -1334,12 +1452,35 @@ localforage.getItem(STORE_KEY).then(data => {
   setInterval(draw, 10000);
 }).catch(() => { _boot(); setInterval(draw, 10000); });
 
+
+// ── Onboarding tooltip ────────────────────────────────────────────────────────
+function showOnboarding() {
+  const el = document.getElementById('onboarding-overlay');
+  if (!el) return;
+  el.style.display = 'flex';
+  requestAnimationFrame(() => el.classList.add('visible'));
+}
+function dismissOnboarding() {
+  const el = document.getElementById('onboarding-overlay');
+  if (el) { el.classList.remove('visible'); setTimeout(() => el.remove(), 400); }
+  localforage.setItem('around_ob_dismissed', true);
+}
+function maybeShowOnboarding() {
+  localforage.getItem('around_ob_dismissed').then(val => {
+    if (!val) setTimeout(showOnboarding, 400);
+    else {
+      const el = document.getElementById('onboarding-overlay');
+      if (el) el.remove();
+    }
+  }).catch(() => setTimeout(showOnboarding, 400));
+}
+
 // ── Splash ────────────────────────────────────────────────────────────────────
 function _dismissSplash() {
   const el = document.getElementById('splash');
   if (!el) return;
   el.classList.add('fade-out');
-  setTimeout(() => { if (el.parentNode) el.remove(); }, 700);
+  setTimeout(() => { if (el.parentNode) el.remove(); maybeShowOnboarding(); }, 700);
 }
 (function _initSplash() {
   setTimeout(_dismissSplash, 2200);
