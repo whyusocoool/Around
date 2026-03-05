@@ -13,5 +13,6 @@
 - 夏令时自动检测
 
 ## 关于
-2026 · Designed by 我也在地球 · Built with Claude
+2026 · Designed by 我也在地球 · Built with Claude 
+
 本项目仅供学习交流展示，未经授权不得用于商业用途。
