@@ -12,5 +12,5 @@
 - 七款视觉主题，含昼夜对照模式
 - 夏令时自动检测
 
-## 关于
+## 声明
 2026 · Designed by 我也在地球 · Built with Claude · All rights reserved
