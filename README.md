@@ -13,4 +13,4 @@
 - 夏令时自动检测
 
 ## 声明
-2026 · Designed by 我也在地球 · Built with Claude · All rights reserved
+2026 · Designed by 我也在地球 · Built with Claude
