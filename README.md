@@ -16,3 +16,7 @@
 @ 2026 我也在地球. All rights reserved.
 
 本项目设计理念、界面美学及交互创意均为作者原创作品，未经许可不得复制或使用。
+
+This project is a design concept. All design ideas, interface aesthetics, 
+and interaction concepts are protected under "All Rights Reserved" and 
+may not be reused or copied without permission.
