@@ -210,10 +210,11 @@
 <div class="brand">
   <div class="brand-zh">Around</div>
   <div class="brand-sub">
-    <div class="dst-toggle" id="dst-toggle" onclick="setDST(!isDST)">
+    <div class="dst-toggle" id="dst-toggle">
       <div class="dst-track" id="dst-track">
-        <span class="dst-label" id="dst-label-dst">夏令时</span>
-        <span class="dst-label" id="dst-label-std">冬令时</span>
+        <span class="dst-label" id="dst-label-summer" onclick="setDST(true)">夏日</span>
+        <span class="dst-label active" id="dst-label-today" onclick="setDST(null)">今日</span>
+        <span class="dst-label" id="dst-label-winter" onclick="setDST(false)">冬日</span>
         <div class="dst-thumb" id="dst-thumb"></div>
       </div>
     </div>
@@ -230,7 +231,7 @@
     <div class="card dial-card">
       <div class="dial-header">
         <div>
-          <div class="dial-label" id="dial-label">指定时间</div>
+          <div class="dial-label" id="dial-label">指定时刻</div>
           <div class="dial-time" id="dial-display" onclick="startTimeEdit()" title="点击输入时间" style="cursor:pointer">--:--</div>
           <input type="time" id="dial-time-input" style="display:none;font-family:'DM Serif Display',serif;font-size:1.5rem;color:var(--text);border:none;background:transparent;outline:none;letter-spacing:-0.5px;width:90px" onchange="applyTimeInput(this.value)" onblur="endTimeEdit()"/>
         </div>
@@ -284,22 +285,85 @@ let showNumbers = true;
 let showWake = true;
 let currentDialMins = 0;
 
-// dst:true = affected by daylight saving (Europe/North America); China stays fixed
-// Base offsets are STANDARD (winter) time
+// ── IANA-based accurate offset (uses browser's built-in tz database) ──────────
+// Returns offset in fractional hours (e.g. 5.5 for India, -4 for US EDT)
+function getIANAOffsetHours(ianaId, date) {
+  try {
+    // Format the date in target tz and UTC, then compare
+    const fmt = (tz) => new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      hour: 'numeric', minute: 'numeric', second: 'numeric',
+      hour12: false, year: 'numeric', month: 'numeric', day: 'numeric'
+    }).formatToParts(date);
+    const toObj = parts => Object.fromEntries(parts.map(p => [p.type, p.value]));
+    const local = toObj(fmt(ianaId));
+    const utc   = toObj(fmt('UTC'));
+    const toMins = o => (parseInt(o.hour,10)%24)*60 + parseInt(o.minute,10) + parseInt(o.second,10)/60
+                        + (parseInt(o.year,10)*525600 + parseInt(o.month,10)*44640 + parseInt(o.day,10)*1440);
+    const diff = toMins(local) - toMins(utc);
+    // Wrap to [-720, 840] minutes range
+    return ((diff + 720) % 1440 - 720) / 60;
+  } catch(e) {
+    return 0;
+  }
+}
+
+// Check if a timezone is currently in DST by comparing summer vs winter offsets
+function isCurrentlyDST(ianaId, date) {
+  try {
+    const y = date.getUTCFullYear();
+    const jan = new Date(Date.UTC(y, 0, 15));
+    const jul = new Date(Date.UTC(y, 6, 15));
+    const offJan = getIANAOffsetHours(ianaId, jan);
+    const offJul = getIANAOffsetHours(ianaId, jul);
+    if (offJan === offJul) return false; // no DST observed
+    const currentOff = getIANAOffsetHours(ianaId, date);
+    return currentOff === Math.max(offJan, offJul);
+  } catch(e) { return false; }
+}
+
+// dstOverride: null = follow IANA realtime, true = force DST, false = force standard
+let dstOverride = null;
+
+// Get offset respecting dstOverride for a given IANA timezone
+function getOffsetWithOverride(ianaId, date) {
+  const y = date.getUTCFullYear();
+  const jan = new Date(Date.UTC(y, 0, 15));
+  const jul = new Date(Date.UTC(y, 6, 15));
+  const offJan = getIANAOffsetHours(ianaId, jan);
+  const offJul = getIANAOffsetHours(ianaId, jul);
+  const hasDST = offJan !== offJul;
+
+  if (dstOverride === null || !hasDST) {
+    // IANA realtime (or timezone has no DST — always realtime)
+    return getIANAOffsetHours(ianaId, date);
+  }
+  // Force summer (DST) or winter (standard) offset
+  return dstOverride ? Math.max(offJan, offJul) : Math.min(offJan, offJul);
+}
+
+// Initial timezones — now driven entirely by IANA IDs
 const BASE_OFFSETS = [
-  {name:'中国 CN',  en:'China',       base:8,  dst:false},
-  {name:'荷兰 NL',  en:'Netherlands', base:1,  dst:true},
+  {name:'中国 CN',  en:'China',       iana:'Asia/Shanghai'},
+  {name:'荷兰 NL',  en:'Netherlands', iana:'Europe/Amsterdam'},
 ];
 
-let isDST = true; // default summer
+// isDST is now purely informational (read from IANA, not controlling logic)
+let isDST = false;
 
-let timezones = BASE_OFFSETS.map(tz => ({
-  name: tz.name,
-  en: tz.en,
-  offset: tz.dst && isDST ? tz.base + 1 : tz.base,
-  dst: tz.dst,
-  baseOffset: tz.base,
-}));
+function buildTzEntry(spec, date) {
+  const d = date || new Date();
+  const offset = getIANAOffsetHours(spec.iana, d);
+  return {
+    name: spec.name,
+    en:   spec.en,
+    iana: spec.iana,
+    offset,            // true current offset in fractional hours
+    dst: isCurrentlyDST(spec.iana, d),
+  };
+}
+
+let timezones = BASE_OFFSETS.map(spec => buildTzEntry(spec));
 let schedules = [
   {wake:7, sleep:23},
   {wake:7, sleep:23},
@@ -397,16 +461,18 @@ function draw() {
     const segGap=0.006;
 
     for(let h=0;h<24;h++) {
-      // h = angular position = tz[0] local hour
-      // localH = what hour it is in tz[i] at this angular position
+      // h = angular position = tz[0] local hour (integer)
+      // localH = fractional hour in tz[i] at this angular position
       const localH=((h+diff)%24+24)%24;
+      // localHf = integer floor for schedule/marker/icon comparisons
+      const localHf=Math.floor(localH);
       const isAwake=schedule.wake<=schedule.sleep
-        ?(localH>=schedule.wake&&localH<schedule.sleep)
-        :(localH>=schedule.wake||localH<schedule.sleep);
+        ?(localHf>=schedule.wake&&localHf<schedule.sleep)
+        :(localHf>=schedule.wake||localHf<schedule.sleep);
       if(!isAwake && !isNightMode()) continue;
 
-      const isMarker=[0,3,6,9,12,15,18,21].includes(localH);
-      const brightness=daylightBrightness(localH);
+      const isMarker=[0,3,6,9,12,15,18,21].includes(localHf);
+      const brightness=daylightBrightness(localHf);
       const segColor=applyBrightness(color,brightness);
       const a0=hToAngle(h)+rotRad+segGap;
       const a1=hToAngle(h+1)+rotRad-segGap;
@@ -419,13 +485,13 @@ function draw() {
         // If this segment has a wake/sleep icon, skip the number
         const sleepHcheck = schedule.sleep % 24;
         const lastAwakeHcheck = (sleepHcheck === 0 ? 23 : sleepHcheck - 1);
-        const hasIcon = showWake && !isNightMode() && (localH === schedule.wake || localH === lastAwakeHcheck);
+        const hasIcon = showWake && !isNightMode() && (localHf === schedule.wake || localHf === lastAwakeHcheck);
         if(showNumbers && !hasIcon) {
           ctx.save();
           ctx.font='600 9px DM Sans';
           ctx.fillStyle='rgba(255,255,255,0.95)';
           ctx.textAlign='center'; ctx.textBaseline='middle';
-          ctx.fillText(localH, px, py);
+          ctx.fillText(localHf, px, py);
           ctx.restore();
         } else if(!showNumbers && !hasIcon) {
           ctx.save();
@@ -481,13 +547,13 @@ function draw() {
           ctx.restore();
         }
 
-        if(localH === schedule.wake) {
+        if(localHf === schedule.wake) {
           const ang = (a0+a1)/2;
           drawSun(cx+Math.cos(ang)*iconR, cy+Math.sin(ang)*iconR, 7);
         }
         const sleepH = schedule.sleep % 24;
         const lastAwakeH = (sleepH === 0 ? 23 : sleepH - 1);
-        if(localH === lastAwakeH) {
+        if(localHf === lastAwakeH) {
           const ang = (a0+a1)/2;
           drawMoon(cx+Math.cos(ang)*iconR, cy+Math.sin(ang)*iconR, 7);
         }
@@ -556,8 +622,8 @@ function draw() {
   const mainTime = `${String(baseH).padStart(2,'0')}:${String(baseM).padStart(2,'0')}`;
 
   function tzTime(i) {
-    const diff = timezones[i].offset - timezones[0].offset;
-    const m = (currentDialMins + diff*60 + 2880) % 1440;
+    const diffMins = (timezones[i].offset - timezones[0].offset) * 60;
+    const m = ((currentDialMins + diffMins) % 1440 + 1440) % 1440;
     return `${String(Math.floor(m/60)%24).padStart(2,'0')}:${String(Math.round(m)%60).padStart(2,'0')}`;
   }
 
@@ -620,11 +686,13 @@ function draw() {
     ctx.restore();
   }
 
-  // ── Orbiting dot: drawn last so always on top ──
+  // ── Orbiting dot: only shown in 今日 (IANA realtime) mode ──
   {
     const now = new Date();
-    const realMins = (now.getUTCHours()*60 + now.getUTCMinutes() + now.getUTCSeconds()/60
-                      + (timezones[0]?.offset ?? 0)*60 + 2880) % 1440;
+    // Always use IANA realtime offset for dot position, regardless of dstOverride
+    const realTz0Offset = timezones[0]?.iana ? getIANAOffsetHours(timezones[0].iana, now) : (timezones[0]?.offset ?? 0);
+    const realMins = ((now.getUTCHours()*60 + now.getUTCMinutes() + now.getUTCSeconds()/60
+                      + realTz0Offset*60) % 1440 + 1440) % 1440;
     const diffMins = realMins - currentDialMins;
     const dotAng = -Math.PI/2 + (diffMins / 1440) * Math.PI * 2;
     const dotR = outermost + 33;
@@ -790,41 +858,23 @@ function onDialChange(val){
   const m=parseFloat(val); currentDialMins=m;
   rotation=minutesToRotation(m); updateDialDisplay(m); draw();
 }
-function lastSundayOf(year, month) {
-  // Returns date of last Sunday in given month (0-indexed)
-  const d = new Date(Date.UTC(year, month + 1, 0)); // last day of month
-  d.setUTCDate(d.getUTCDate() - d.getUTCDay()); // back to Sunday
-  return d;
-}
-
-function calcRealDST(now) {
-  const y = now.getUTCFullYear();
-  // EU DST: starts last Sunday March 01:00 UTC, ends last Sunday October 01:00 UTC
-  const start = lastSundayOf(y, 2); // March = month 2
-  start.setUTCHours(1);
-  const end = lastSundayOf(y, 9); // October = month 9
-  end.setUTCHours(1);
-  return now >= start && now < end;
-}
-
 function resetToNow(){
   const now = new Date();
-  const utcMins = now.getUTCHours()*60 + now.getUTCMinutes();
-
-  const realDST = calcRealDST(now);
-  isDST = realDST;
+  // Clear any manual override — always go back to IANA realtime
+  dstOverride = null;
+  // Refresh all timezone offsets from IANA database for current moment
   timezones = timezones.map(tz => ({
     ...tz,
-    offset: tz.dst && isDST ? tz.baseOffset + 1 : tz.baseOffset,
+    offset: getIANAOffsetHours(tz.iana, now),
+    dst:    isCurrentlyDST(tz.iana, now),
   }));
-  const dstBtn = document.getElementById('dst-btn');
-  const stdBtn = document.getElementById('std-btn');
-  if(dstBtn) dstBtn.classList.toggle('active', isDST);
-  if(stdBtn) stdBtn.classList.toggle('active', !isDST);
+  // isDST reflects tz[0]'s actual current state
+  isDST = timezones[0]?.dst ?? false;
   _updateDstToggle();
 
-  const tz0offset = timezones[0]?.offset ?? 0;
-  const m = (utcMins + tz0offset*60 + 1440) % 1440;
+  const utcMins = now.getUTCHours()*60 + now.getUTCMinutes() + now.getUTCSeconds()/60;
+  const tz0offsetMins = (timezones[0]?.offset ?? 0) * 60;
+  const m = ((utcMins + tz0offsetMins) % 1440 + 1440) % 1440;
   currentDialMins = m;
   const slider = document.getElementById('dial-slider');
   if(slider) slider.value = Math.round(m);
@@ -950,7 +1000,7 @@ function initTzDrag(el, listEl) {
             ? `<button class="btn-small" onclick="removeTz(${i})">×</button>`
             : `<div style="width:22px"></div>`;
           r.dataset.idx = i;
-          r.innerHTML = `<span class="tz-drag-handle" style="font-size:0.75rem;color:var(--text-light);flex-shrink:0;margin-right:2px;cursor:grab;touch-action:none;user-select:none">⋮⋮</span><div style="${dotStyle}"></div><span class="tz-name" style="flex:none">${tzDisplayName(tz)}</span><span style="flex:1"></span><span class="tz-offset">UTC${tz.offset>=0?'+':''}${tz.offset}</span>${delBtn}`;
+          r.innerHTML = `<span class="tz-drag-handle" style="font-size:0.75rem;color:var(--text-light);flex-shrink:0;margin-right:2px;cursor:grab;touch-action:none;user-select:none">⋮⋮</span><div style="${dotStyle}"></div><span class="tz-name" style="flex:none">${tzDisplayName(tz)}</span><span style="flex:1"></span><span class="tz-offset">${fmtOffset(tz.offset)}</span>${delBtn}`;
           r.style.opacity = i === tzDragSrc ? '0.3' : '';
         });
       }
@@ -969,6 +1019,13 @@ function initTzDrag(el, listEl) {
   el.addEventListener('pointercancel', endDrag);
 }
 
+function fmtOffset(offset) {
+  const sign = offset >= 0 ? '+' : '-';
+  const abs = Math.abs(offset);
+  const h = Math.floor(abs);
+  const m = Math.round((abs % 1) * 60);
+  return `UTC${sign}${String(h).padStart(2,'0')}${m ? ':'+String(m).padStart(2,'0') : ''}`;
+}
 function renderTzList(){
   const el=document.getElementById('tz-list'); el.innerHTML='';
   timezones.forEach((tz,i)=>{
@@ -983,7 +1040,8 @@ function renderTzList(){
     const delBtn = timezones.length>1
       ? `<button class="btn-small" onclick="removeTz(${i})">×</button>`
       : `<div style="width:22px"></div>`;
-    d.innerHTML=`<span class="tz-drag-handle" style="font-size:0.75rem;color:var(--text-light);flex-shrink:0;margin-right:2px;cursor:grab;touch-action:none;user-select:none">⋮⋮</span><div style="${dotStyle}"></div><span class="tz-name" style="flex:none">${tzDisplayName(tz)}</span><span style="flex:1"></span><span class="tz-offset">UTC${tz.offset>=0?'+':''}${tz.offset}</span>${delBtn}`;
+    const dstBadge = tz.dst ? `<span style="font-size:0.62rem;color:#d08030">DST</span>` : '';
+    d.innerHTML=`<span class="tz-drag-handle" style="font-size:0.75rem;color:var(--text-light);flex-shrink:0;margin-right:2px;cursor:grab;touch-action:none;user-select:none">⋮⋮</span><div style="${dotStyle}"></div><span class="tz-name" style="flex:none">${tzDisplayName(tz)}</span><span style="flex:1"></span>${dstBadge}<span class="tz-offset">${fmtOffset(tz.offset)}</span>${delBtn}`;
     el.appendChild(d);
     initTzDrag(d, el);
   });
@@ -1086,26 +1144,56 @@ function updateSchedule(i,key,val){
   draw();
 }
 function setDST(val) {
-  if(isDST === val) return;
-  isDST = val;
-  timezones = timezones.map(tz => ({
-    ...tz,
-    offset: tz.dst && isDST ? tz.baseOffset + 1 : tz.baseOffset,
-  }));
+  // val: true = force summer, false = force winter, null = 今日 (IANA realtime offsets, time unchanged)
+  dstOverride = val;
+  const now = new Date();
+  timezones = timezones.map(tz => {
+    const y = now.getUTCFullYear();
+    const offJan = getIANAOffsetHours(tz.iana, new Date(Date.UTC(y,0,15)));
+    const offJul = getIANAOffsetHours(tz.iana, new Date(Date.UTC(y,6,15)));
+    const hasDST = offJan !== offJul;
+    let offset, dst;
+    if (val === null) {
+      // 今日：IANA 实时偏移，时刻不动
+      offset = getIANAOffsetHours(tz.iana, now);
+      dst = isCurrentlyDST(tz.iana, now);
+    } else {
+      offset = hasDST
+        ? (val ? Math.max(offJan, offJul) : Math.min(offJan, offJul))
+        : getIANAOffsetHours(tz.iana, now);
+      dst = hasDST && val;
+    }
+    return { ...tz, offset, dst };
+  });
+  isDST = timezones[0]?.dst ?? false;
   _updateDstToggle();
-  renderAll();
+  renderControls();
+  draw();
 }
 function _updateDstToggle() {
-  const thumb  = document.getElementById('dst-thumb');
-  const lblDst = document.getElementById('dst-label-dst');
-  const lblStd = document.getElementById('dst-label-std');
-  if (!thumb || !lblDst || !lblStd) return;
-  const dstW = Math.ceil(lblDst.getBoundingClientRect().width) || 52;
-  const stdW = Math.ceil(lblStd.getBoundingClientRect().width) || 52;
-  thumb.style.width = isDST ? dstW + 'px' : stdW + 'px';
-  thumb.style.left  = isDST ? '2px' : (dstW + 2) + 'px';
-  lblDst.classList.toggle('active', isDST);
-  lblStd.classList.toggle('active', !isDST);
+  const thumb   = document.getElementById('dst-thumb');
+  const lblSum  = document.getElementById('dst-label-summer');
+  const lblTod  = document.getElementById('dst-label-today');
+  const lblWin  = document.getElementById('dst-label-winter');
+  if (!thumb || !lblSum || !lblTod || !lblWin) return;
+
+  const sumW = Math.ceil(lblSum.getBoundingClientRect().width) || 40;
+  const todW = Math.ceil(lblTod.getBoundingClientRect().width) || 40;
+  const winW = Math.ceil(lblWin.getBoundingClientRect().width) || 40;
+
+  // dstOverride: true=summer, null=today, false=winter
+  let activeEl, left, width;
+  if (dstOverride === true) {
+    activeEl = lblSum; left = 2; width = sumW;
+  } else if (dstOverride === false) {
+    activeEl = lblWin; left = 2 + sumW + todW; width = winW;
+  } else {
+    activeEl = lblTod; left = 2 + sumW; width = todW;
+  }
+
+  thumb.style.width = width + 'px';
+  thumb.style.left  = left + 'px';
+  [lblSum, lblTod, lblWin].forEach(l => l.classList.toggle('active', l === activeEl));
 }
 
 // ── Panel order ───────────────────────────────────────────────────────────────
@@ -1114,8 +1202,8 @@ let lang = 'zh';
 const I18N = {
   zh: {
     subtitle: '你的时区伴侣',
-    dst: '夏令时', std: '冬令时',
-    dialLabel: '指定时间',
+    summer: '夏日', today: '今日', winter: '冬日',
+    dialLabel: '指定时刻',
     showNums: '显示时刻', hideNums: '隐藏时刻',
     showWake: '显示起床', hideWake: '隐藏起床',
     resetNow: '回到现在',
@@ -1125,7 +1213,7 @@ const I18N = {
   },
   en: {
     subtitle: 'Time Zone Companion',
-    dst: 'Summer', std: 'Winter',
+    summer: 'Summer', today: 'Today', winter: 'Winter',
     dialLabel: 'Set Time',
     showNums: 'Show hours', hideNums: 'Hide hours',
     showWake: 'Show wake', hideWake: 'Hide wake',
@@ -1154,8 +1242,9 @@ function toggleLang() {
 function applyLang() {
   const L = I18N[lang];
   const el = id => document.getElementById(id);
-  if(el('dst-label-dst')) el('dst-label-dst').textContent = L.dst;
-  if(el('dst-label-std')) el('dst-label-std').textContent = L.std;
+  if(el('dst-label-summer')) el('dst-label-summer').textContent = L.summer;
+  if(el('dst-label-today'))  el('dst-label-today').textContent  = L.today;
+  if(el('dst-label-winter')) el('dst-label-winter').textContent = L.winter;
   if(el('lang-btn')) el('lang-btn').textContent = lang === 'zh' ? 'EN' : '中';
   if(el('dial-label')) el('dial-label').textContent = L.dialLabel;
   if(el('reset-btn')) el('reset-btn').textContent = L.resetNow;
@@ -1246,57 +1335,76 @@ function renderControls() {
 // ── Preset timezone list ──
 const TZ_PRESETS = [
   // 亚洲
-  {name:'中国 CN',          en:'China',          short:'CN',  base:8,    dst:false},
-  {name:'日本 JP',          en:'Japan',          short:'JP',  base:9,    dst:false},
-  {name:'韩国 KR',          en:'Korea',          short:'KR',  base:9,    dst:false},
-  {name:'新加坡 SG',        en:'Singapore',      short:'SG',  base:8,    dst:false},
-  {name:'香港 HK',          en:'Hong Kong',      short:'HK',  base:8,    dst:false},
-  {name:'台湾 TW',          en:'Taiwan',         short:'TW',  base:8,    dst:false},
-  {name:'泰国 TH',          en:'Thailand',       short:'TH',  base:7,    dst:false},
-  {name:'越南 VN',          en:'Vietnam',        short:'VN',  base:7,    dst:false},
-  {name:'印尼 ID',          en:'Indonesia',      short:'ID',  base:7,    dst:false},
-  {name:'马来西亚 MY',      en:'Malaysia',       short:'MY',  base:8,    dst:false},
-  {name:'印度 IN',          en:'India',          short:'IN',  base:5.5,  dst:false},
-  {name:'巴基斯坦 PK',      en:'Pakistan',       short:'PK',  base:5,    dst:false},
-  {name:'迪拜 AE',          en:'Dubai',          short:'AE',  base:4,    dst:false},
-  {name:'以色列 IL',        en:'Israel',         short:'IL',  base:2,    dst:true},
-  {name:'土耳其 TR',        en:'Turkey',         short:'TR',  base:3,    dst:false},
+  {name:'中国 CN',          en:'China',          short:'CN',  iana:'Asia/Shanghai'},
+  {name:'日本 JP',          en:'Japan',          short:'JP',  iana:'Asia/Tokyo'},
+  {name:'韩国 KR',          en:'Korea',          short:'KR',  iana:'Asia/Seoul'},
+  {name:'新加坡 SG',        en:'Singapore',      short:'SG',  iana:'Asia/Singapore'},
+  {name:'香港 HK',          en:'Hong Kong',      short:'HK',  iana:'Asia/Hong_Kong'},
+  {name:'台湾 TW',          en:'Taiwan',         short:'TW',  iana:'Asia/Taipei'},
+  {name:'泰国 TH',          en:'Thailand',       short:'TH',  iana:'Asia/Bangkok'},
+  {name:'越南 VN',          en:'Vietnam',        short:'VN',  iana:'Asia/Ho_Chi_Minh'},
+  {name:'印尼 ID',          en:'Indonesia',      short:'ID',  iana:'Asia/Jakarta'},
+  {name:'马来西亚 MY',      en:'Malaysia',       short:'MY',  iana:'Asia/Kuala_Lumpur'},
+  {name:'印度 IN',          en:'India',          short:'IN',  iana:'Asia/Kolkata'},
+  {name:'巴基斯坦 PK',      en:'Pakistan',       short:'PK',  iana:'Asia/Karachi'},
+  {name:'尼泊尔 NP',        en:'Nepal',          short:'NP',  iana:'Asia/Kathmandu'},
+  {name:'孟加拉 BD',        en:'Bangladesh',     short:'BD',  iana:'Asia/Dhaka'},
+  {name:'缅甸 MM',          en:'Myanmar',        short:'MM',  iana:'Asia/Rangoon'},
+  {name:'迪拜 AE',          en:'Dubai',          short:'AE',  iana:'Asia/Dubai'},
+  {name:'以色列 IL',        en:'Israel',         short:'IL',  iana:'Asia/Jerusalem'},
+  {name:'土耳其 TR',        en:'Turkey',         short:'TR',  iana:'Europe/Istanbul'},
+  {name:'伊朗 IR',          en:'Iran',           short:'IR',  iana:'Asia/Tehran'},
+  {name:'沙特 SA',          en:'Saudi Arabia',   short:'SA',  iana:'Asia/Riyadh'},
+  {name:'哈萨克斯坦 KZ',   en:'Kazakhstan',     short:'KZ',  iana:'Asia/Almaty'},
   // 欧洲
-  {name:'荷兰 NL',          en:'Netherlands',    short:'NL',  base:1,    dst:true},
-  {name:'法国 FR',          en:'France',         short:'FR',  base:1,    dst:true},
-  {name:'德国 DE',          en:'Germany',        short:'DE',  base:1,    dst:true},
-  {name:'西班牙 ES',        en:'Spain',          short:'ES',  base:1,    dst:true},
-  {name:'意大利 IT',        en:'Italy',          short:'IT',  base:1,    dst:true},
-  {name:'瑞士 CH',          en:'Switzerland',    short:'CH',  base:1,    dst:true},
-  {name:'比利时 BE',        en:'Belgium',        short:'BE',  base:1,    dst:true},
-  {name:'英国 GB',          en:'UK',             short:'GB',  base:0,    dst:true},
-  {name:'爱尔兰 IE',        en:'Ireland',        short:'IE',  base:0,    dst:true},
-  {name:'葡萄牙 PT',        en:'Portugal',       short:'PT',  base:0,    dst:true},
-  {name:'瑞典 SE',          en:'Sweden',         short:'SE',  base:1,    dst:true},
-  {name:'挪威 NO',          en:'Norway',         short:'NO',  base:1,    dst:true},
-  {name:'丹麦 DK',          en:'Denmark',        short:'DK',  base:1,    dst:true},
-  {name:'芬兰 FI',          en:'Finland',        short:'FI',  base:2,    dst:true},
-  {name:'波兰 PL',          en:'Poland',         short:'PL',  base:1,    dst:true},
-  {name:'俄罗斯 RU',        en:'Russia',         short:'RU',  base:3,    dst:false},
+  {name:'荷兰 NL',          en:'Netherlands',    short:'NL',  iana:'Europe/Amsterdam'},
+  {name:'法国 FR',          en:'France',         short:'FR',  iana:'Europe/Paris'},
+  {name:'德国 DE',          en:'Germany',        short:'DE',  iana:'Europe/Berlin'},
+  {name:'西班牙 ES',        en:'Spain',          short:'ES',  iana:'Europe/Madrid'},
+  {name:'意大利 IT',        en:'Italy',          short:'IT',  iana:'Europe/Rome'},
+  {name:'瑞士 CH',          en:'Switzerland',    short:'CH',  iana:'Europe/Zurich'},
+  {name:'比利时 BE',        en:'Belgium',        short:'BE',  iana:'Europe/Brussels'},
+  {name:'英国 GB',          en:'UK',             short:'GB',  iana:'Europe/London'},
+  {name:'爱尔兰 IE',        en:'Ireland',        short:'IE',  iana:'Europe/Dublin'},
+  {name:'葡萄牙 PT',        en:'Portugal',       short:'PT',  iana:'Europe/Lisbon'},
+  {name:'瑞典 SE',          en:'Sweden',         short:'SE',  iana:'Europe/Stockholm'},
+  {name:'挪威 NO',          en:'Norway',         short:'NO',  iana:'Europe/Oslo'},
+  {name:'丹麦 DK',          en:'Denmark',        short:'DK',  iana:'Europe/Copenhagen'},
+  {name:'芬兰 FI',          en:'Finland',        short:'FI',  iana:'Europe/Helsinki'},
+  {name:'波兰 PL',          en:'Poland',         short:'PL',  iana:'Europe/Warsaw'},
+  {name:'俄罗斯 RU',        en:'Russia (Moscow)',short:'RU',  iana:'Europe/Moscow'},
+  {name:'乌克兰 UA',        en:'Ukraine',        short:'UA',  iana:'Europe/Kiev'},
+  {name:'希腊 GR',          en:'Greece',         short:'GR',  iana:'Europe/Athens'},
+  {name:'罗马尼亚 RO',      en:'Romania',        short:'RO',  iana:'Europe/Bucharest'},
   // 美洲
-  {name:'美东 ET',          en:'US East',        short:'ET',  base:-5,   dst:true},
-  {name:'美中 CT',          en:'US Central',     short:'CT',  base:-6,   dst:true},
-  {name:'美山 MT',          en:'US Mountain',    short:'MT',  base:-7,   dst:true},
-  {name:'美西 PT',          en:'US West',        short:'PT',  base:-8,   dst:true},
-  {name:'加东 CA-E',        en:'Canada East',    short:'CA',  base:-5,   dst:true},
-  {name:'加西 CA-W',        en:'Canada West',    short:'CA',  base:-8,   dst:true},
-  {name:'墨西哥 MX',        en:'Mexico',         short:'MX',  base:-6,   dst:true},
-  {name:'巴西 BR',          en:'Brazil',         short:'BR',  base:-3,   dst:false},
-  {name:'阿根廷 AR',        en:'Argentina',      short:'AR',  base:-3,   dst:false},
+  {name:'美东 ET',          en:'US East',        short:'ET',  iana:'America/New_York'},
+  {name:'美中 CT',          en:'US Central',     short:'CT',  iana:'America/Chicago'},
+  {name:'美山 MT',          en:'US Mountain',    short:'MT',  iana:'America/Denver'},
+  {name:'美西 PT',          en:'US West',        short:'PT',  iana:'America/Los_Angeles'},
+  {name:'美西南 AZ',        en:'US Arizona',     short:'AZ',  iana:'America/Phoenix'},
+  {name:'夏威夷 HI',        en:'Hawaii',         short:'HI',  iana:'Pacific/Honolulu'},
+  {name:'阿拉斯加 AK',      en:'Alaska',         short:'AK',  iana:'America/Anchorage'},
+  {name:'加东 CA-E',        en:'Canada East',    short:'CA',  iana:'America/Toronto'},
+  {name:'加西 CA-W',        en:'Canada West',    short:'CA',  iana:'America/Vancouver'},
+  {name:'墨西哥 MX',        en:'Mexico City',    short:'MX',  iana:'America/Mexico_City'},
+  {name:'巴西 BR',          en:'Brazil',         short:'BR',  iana:'America/Sao_Paulo'},
+  {name:'阿根廷 AR',        en:'Argentina',      short:'AR',  iana:'America/Argentina/Buenos_Aires'},
+  {name:'智利 CL',          en:'Chile',          short:'CL',  iana:'America/Santiago'},
+  {name:'哥伦比亚 CO',      en:'Colombia',       short:'CO',  iana:'America/Bogota'},
+  {name:'秘鲁 PE',          en:'Peru',           short:'PE',  iana:'America/Lima'},
+  {name:'委内瑞拉 VE',      en:'Venezuela',      short:'VE',  iana:'America/Caracas'},
   // 大洋洲
-  {name:'澳大利亚东 AU-E',  en:'Australia East', short:'AU',  base:10,   dst:true},
-  {name:'澳大利亚西 AU-W',  en:'Australia West', short:'AU',  base:8,    dst:false},
-  {name:'新西兰 NZ',        en:'New Zealand',    short:'NZ',  base:12,   dst:true},
+  {name:'澳大利亚东 AU-E',  en:'Australia East', short:'AU',  iana:'Australia/Sydney'},
+  {name:'澳大利亚西 AU-W',  en:'Australia West', short:'AU',  iana:'Australia/Perth'},
+  {name:'澳大利亚中 AU-C',  en:'Australia Central',short:'AU',iana:'Australia/Adelaide'},
+  {name:'新西兰 NZ',        en:'New Zealand',    short:'NZ',  iana:'Pacific/Auckland'},
   // 非洲
-  {name:'南非 ZA',          en:'South Africa',   short:'ZA',  base:2,    dst:false},
-  {name:'尼日利亚 NG',      en:'Nigeria',        short:'NG',  base:1,    dst:false},
-  {name:'埃及 EG',          en:'Egypt',          short:'EG',  base:2,    dst:false},
-  {name:'肯尼亚 KE',        en:'Kenya',          short:'KE',  base:3,    dst:false},
+  {name:'南非 ZA',          en:'South Africa',   short:'ZA',  iana:'Africa/Johannesburg'},
+  {name:'尼日利亚 NG',      en:'Nigeria',        short:'NG',  iana:'Africa/Lagos'},
+  {name:'埃及 EG',          en:'Egypt',          short:'EG',  iana:'Africa/Cairo'},
+  {name:'肯尼亚 KE',        en:'Kenya',          short:'KE',  iana:'Africa/Nairobi'},
+  {name:'摩洛哥 MA',        en:'Morocco',        short:'MA',  iana:'Africa/Casablanca'},
+  {name:'埃塞俄比亚 ET',    en:'Ethiopia',       short:'ET',  iana:'Africa/Addis_Ababa'},
 ];
 
 // Helper: get display name based on current lang
@@ -1320,9 +1428,12 @@ function filterTzOptions(query) {
 function renderDropdown(list) {
   const dd = document.getElementById('tz-dropdown');
   dd.innerHTML = '';
+  const now = new Date();
   list.forEach(p => {
-    const offset = p.dst && isDST ? p.base + 1 : p.base;
-    const offStr = `UTC${offset >= 0 ? '+' : ''}${offset}`;
+    const offset = getIANAOffsetHours(p.iana, now);
+    const h = Math.floor(Math.abs(offset)), m = Math.round((Math.abs(offset) % 1) * 60);
+    const offStr = `UTC${offset >= 0 ? '+' : '-'}${String(h).padStart(2,'0')}${m ? ':'+String(m).padStart(2,'0') : ''}`;
+    const dst = isCurrentlyDST(p.iana, now);
     const displayName = lang === 'en' && p.en ? p.en : p.name;
     const div = document.createElement('div');
     div.className = 'tz-option';
@@ -1361,8 +1472,14 @@ function addTimezoneFromSearch() {
   if(!selectedPreset) return;
   if(timezones.length >= 3) return;
   const p = selectedPreset;
-  const offset = p.dst && isDST ? p.base + 1 : p.base;
-  timezones.push({name: p.name, en: p.en, offset, dst: p.dst, baseOffset: p.base});
+  const now = new Date();
+  timezones.push({
+    name: p.name,
+    en:   p.en,
+    iana: p.iana,
+    offset: getOffsetWithOverride(p.iana, now),
+    dst:    isCurrentlyDST(p.iana, now),
+  });
   schedules.push({wake:7, sleep:23});
   document.getElementById('tz-search').value = '';
   selectedPreset = null;
@@ -1384,7 +1501,7 @@ function removeTz(i){
 function renderAll(){ saveSettings(); renderControls(); applyLang(); draw(); }
 
 // ── Storage via localForage (IndexedDB → WebSQL → localStorage auto-fallback) ─
-const STORE_KEY = 'around_v4';
+const STORE_KEY = 'around_v5';
 localforage.config({ name: 'AroundApp', storeName: 'settings' });
 
 // Blend hex color with white by amount (0=original, 1=white)
@@ -1396,9 +1513,9 @@ function _lightenHex(hex, amt) {
 
 function saveSettings() {
   const data = {
-    v: 4,
+    v: 5,  // bumped because schema changed
     themeIdx: THEMES.indexOf(theme),
-    timezones: timezones.map(tz => ({name:tz.name, en:tz.en||'', offset:tz.offset, dst:tz.dst, baseOffset:tz.baseOffset})),
+    timezones: timezones.map(tz => ({name:tz.name, en:tz.en||'', iana:tz.iana||''})),
     schedules: schedules.slice(0, timezones.length).map(s => ({wake: s?.wake ?? 7, sleep: s?.sleep ?? 23})),
     lang,
     panelOrder: [...panelOrder],
@@ -1409,7 +1526,7 @@ function saveSettings() {
 }
 
 function _applySettings(s) {
-  if (!s || s.v !== 4) return false;
+  if (!s || s.v !== 5) return false;
   if (typeof s.themeIdx === 'number' && s.themeIdx >= 0 && s.themeIdx < THEMES.length) {
     theme = THEMES[s.themeIdx];
     document.documentElement.style.setProperty('--bg', theme.bg);
@@ -1418,11 +1535,13 @@ function _applySettings(s) {
     document.body.style.background = theme.bg;
   }
   if (Array.isArray(s.timezones) && s.timezones.length >= 1) {
-    const realDST = calcRealDST(new Date());
-    isDST = realDST;
+    const now = new Date();
     timezones = s.timezones.map(tz => ({
-      ...tz,
-      offset: tz.dst && realDST ? tz.baseOffset + 1 : tz.baseOffset,
+      name:   tz.name,
+      en:     tz.en || '',
+      iana:   tz.iana || 'UTC',
+      offset: getOffsetWithOverride(tz.iana || 'UTC', now),
+      dst:    isCurrentlyDST(tz.iana || 'UTC', now),
     }));
     schedules = timezones.map((_,i) =>
       (s.schedules && s.schedules[i]) ? {wake: s.schedules[i].wake, sleep: s.schedules[i].sleep} : {wake:7, sleep:23}
